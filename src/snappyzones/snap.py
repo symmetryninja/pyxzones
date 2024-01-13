@@ -64,13 +64,15 @@ def snap_window(self, x, y):
         zone_profile = self.zp
         window = active_window(display)
         dx, dy, dw, dh = geometry_deltas(window)
+        #print(f"snap_window:　{dx=}, {dy=}, {dw=}, {dh=}")
         zone = zone_profile.find_zones(self, x, y)
         if window and zone:
+            print(f"window.configure(x={zone.x}, y={zone.y}, width={zone.width}, height={zone.height})")
             window.configure(
                 x=zone.x,
                 y=zone.y,
-                width=zone.width - dx,
-                height=zone.height - dy,
+                width=zone.width,# - dx,
+                height=zone.height,# - dy,
                 stack_mode=X.Above,
             )
             display.sync()

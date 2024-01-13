@@ -115,6 +115,91 @@ class ZoneProfile:
         return obj
 
     @staticmethod
+    def get_safe_display(monitor, protected_area):
+        return{
+            "virtual_x": monitor['virtual_x'] + protected_area['left'] * monitor['scale'],
+            "virtual_y": monitor['virtual_y'] + protected_area['top'] * monitor['scale'],
+            "virtual_width": monitor['virtual_width'] - (protected_area['left'] + protected_area['right']) * monitor['scale'],
+            "virtual_height": monitor['virtual_height'] - (protected_area['top'] + protected_area['bottom']) * monitor['scale'],
+        }
+    
+    @staticmethod
+    def zones_for_monitor(monitor, zone_spec):
+        zones = []
+
+        protected_area = zone_spec['protected_area'] if zone_spec['protected_area'] else { "left": 0, "right": 0, "top": 0, "bottom": 0 }
+        virtual_display = ZoneProfile.get_safe_display(monitor, protected_area)
+        
+        x_offset = virtual_display['virtual_x']
+        y_offset = virtual_display['virtual_y']
+        y_consumed = 0
+
+        for row in zone_spec['rows']:
+            height = row['height_pct'] / 100 * virtual_display['virtual_height']
+
+            x_consumed = 0
+            for column in row['columns']:
+                width = column['width_pct'] / 100 * virtual_display['virtual_width']
+
+                zones.append({
+                                "x": int(x_offset + x_consumed),
+                                "y": int(y_offset + y_consumed),
+                                "width": int(width),
+                                "height": int(height),
+                            })
+
+                x_consumed += width
+
+            y_consumed += height
+
+        return zones
+
+    @staticmethod
+    def from_pct_mutliscreen(monitors):
+        
+        zone_spec = SETTINGS.zones
+
+        # TODO:　protected_area impl
+        # TODO:　grid-based layout? allow nested column/rows?
+
+        zones = []
+        for display_index in range(len(zone_spec['displays'])):
+
+            zones += ZoneProfile.zones_for_monitor(monitors[display_index], zone_spec['displays'][display_index])
+
+            """
+            display = zone_spec['displays'][display_index]
+            virtual_display = monitors[display_index]
+            
+            #print(virtual_display)
+
+            y_offset = virtual_display['virtual_y']
+            x_offset = virtual_display['virtual_x']
+            y_consumed = 0
+
+            for row in display['rows']:
+                height = row['height_pct'] / 100 * virtual_display['virtual_height'] #　not a real representation of height, X11 scaling is odd
+
+                x_consumed = 0
+                for column in row['columns']:
+                    width = column['width_pct'] / 100 * virtual_display['virtual_width']
+
+                    zones.append({
+                                    "x": int(x_offset + x_consumed),
+                                    "y": int(y_offset + y_consumed),
+                                    "width": int(width),
+                                    "height": int(height),
+                                })
+
+                    x_consumed += width
+
+                y_consumed += height
+            """
+
+        print(zones)
+        return ZoneProfile([Zone(**obj) for obj in zones])
+
+    @staticmethod
     def from_file():
         if data := SETTINGS.zones:
             return ZoneProfile([Zone(**obj) for obj in data])

@@ -1,41 +1,20 @@
 #! /usr/bin/python3
 
-from .cmd_reader import reader
 from .service import Service
-from .builder import ZoneBuilder
 from .process import launch_background_process, stop_background_process
-from .conf.keybinding_service import KeybindingService
+import sys
 
-ZONES = "zones"
-KEYFINDER = "keyfinder"
-
-
+# TODO:　Proper(?) command line parsing
 def main():
-    cmd, args, kwargs = reader()
-    if not any([cmd, args, kwargs]):
+    if len(sys.argv) == 1:
         service = Service()
         service.listen()
 
-    if cmd == "config":
-        _config_menu(*args, **kwargs)
-
-    elif cmd == "start":
+    elif sys.argv[-1] == "start":
         launch_background_process(*args, **kwargs)
 
-    elif cmd == "stop":
+    elif sys.argv[-1] == "stop":
         stop_background_process()
-
-
-def _config_menu(*args, **kwargs):
-    if ZONES in args:
-        zb = ZoneBuilder(*args, **kwargs)
-        zb.main()
-
-    elif KEYFINDER in args:
-        print("Press Ctrl+C to quit.")
-        kf = KeybindingService()
-        kf.listen()
-
 
 if __name__ == "__main__":
     main()

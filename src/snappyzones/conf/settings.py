@@ -16,50 +16,120 @@ class Settings:
     def pid(self, _pid):
         self._write(self._pid_file, str(_pid))
 
+    # TODO:　This lets columns exist in rows but that's all the flexibility
+    # Need to rethink this, pixels are fine now that scaling is known but not very practical
     @property
     def zones(self):
-        if _zones := self._read(self._zone_file):
-            return json.loads(_zones)
-        return None
+            return {
+                "displays": [ # list of displays
+                    { # display 1, horizontal (from left to right in virtual display)
+                        "protected_area": { "left": 0, "right": 0, "top": 0, "bottom": 32, },
+                        "rows": [ # list of rows on display
+                            {
+                                "height_pct": 100,
+                                "columns": [ # list of columns in each row
+                                    {
+                                        "width_pct": 10,
+                                    },
+                                    {
+                                        "width_pct": 80,
+                                    },
+                                    {
+                                        "width_pct": 10,
+                                    }
+                                ],
+                            },
+                        ],
+                    },
+                    { # display 2, vertical
+                        "protected_area": { "left": 0, "right": 0, "top": 0, "bottom": 32, },
+                        "rows": [ # list of rows on display
+                            {
+                                "height_pct": 35,
+                                "columns": [
+                                    {
+                                        "width_pct": 100,
+                                    },
+                                ],
+                            },
+                            {
+                                "height_pct": 40,
+                                "columns": [
+                                    {
+                                        "width_pct": 100,
+                                    },
+                                ],
+                            },
+                            {
+                                "height_pct": 25,
+                                "columns": [
+                                    {
+                                        "width_pct": 100,
+                                    },
+                                ],
+                            },
+                        ],
+                    },
+                ]
+            }
+            """
+            y_offset = 1156
+            x_offset = 0
+            return [
+                {
+                    "height": 1024,
+                    "width": 640,
+                    "x": 0,
+                    "y": y_offset
+                },
+                {
+                    "height": 1024,
+                    "width": 640,
+                    "x": 640,
+                    "y": y_offset
+                },
+                {
+                    "height": 1024,
+                    "width": 640,
+                    "x": 1280,
+                    "y": y_offset
+                }
+            ]
+            """
+
+
+        #return json.loads(
+            """
+            [
+                {
+                    "height": 1024,
+                    "width": 640,
+                    "x": 0,
+                    "y": 0
+                },
+                {
+                    "height": 1024,
+                    "width": 640,
+                    "x": 640,
+                    "y": 0
+                },
+                {
+                    "height": 1024,
+                    "width": 640,
+                    "x": 1280,
+                    "y": 0
+                }
+            ]
+            """
+        #)
 
     @zones.setter
     def zones(self, _zones):
-        self._write(self._zone_file, json.dumps(_zones, indent=2, sort_keys=True))
+        pass
 
     @property
     def keybindings(self):
-        _data = self._read(self._keybindings_file)
-        results = [
-            char
-            for char in _data.split("\n")
-            if not char.startswith(("#", "!")) and char != ""
-        ]
-        if results:
-            return results
-        return ["Shift_L"]  # a default in case someone tries to be funny
-
-    @property
-    def keybinding_modifier(self):
-        _data = self._read(self._keybindings_file)
-        results = [
-            char.replace("! ") for char in _data.split("\n") if char.startswith("!")
-        ]
-        if results:
-            return results
-        return ["Control_L"]  # a default in case someone tries to be funny
-
-    @property
-    def _raw_keybindings(self):
-        _data = self._read(self._keybindings_file)[1:]
-        return [char.replace("# ", "") for char in _data.split("\n")]
-
-    @property
-    def _keybindings_file(self):
-        return os.path.join(HERE, "keybindings.txt")
-
-    @property
-    def _zone_file(self):
-        return os.path.join(HERE, "zones.json")
+        return ['Alt_L'] #["Shift_L"]
 
     @property
     def _pid_file(self):

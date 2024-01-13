@@ -1,1 +1,2 @@
-python3-xlib==0.15
+python-xlib==0.33
+ewmh==0.1.6
