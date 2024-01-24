@@ -163,7 +163,7 @@ class ZoneProfile:
         # TODO:　grid-based layout? allow nested column/rows?
 
         zones = []
-        for display_index in range(len(zone_spec['displays'])):
+        for display_index in range(len(monitors)):#range(len(zone_spec['displays'])):
 
             zones += ZoneProfile.zones_for_monitor(monitors[display_index], zone_spec['displays'][display_index])
 

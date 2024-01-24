@@ -1,5 +1,5 @@
 
-from Xlib import X, Xutil
+from Xlib import X, Xutil, Xatom
 from Xlib.ext import shape
 from ewmh import EWMH
 
@@ -9,7 +9,6 @@ from .zoning import ZoneProfile
 class OutlineWindow:
     def __init__(self, display, x, y, w, h, lw=3):
         self.d = display
-
         self.screen = self.d.screen()
 
         self.WM_DELETE_WINDOW = self.d.intern_atom('WM_DELETE_WINDOW')
@@ -68,18 +67,24 @@ class OutlineWindow:
         # use the python-ewmh lib to set extended attributes on the window. Make sure to do this after
         # calling window.map() otherwise your attributes will not be received by the window.
         self.ewmh = EWMH(display, self.screen.root)
+
         # Always on top
         self.ewmh.setWmState(self.window, 1, '_NET_WM_STATE_ABOVE')
-        # Draw even over the task bar
-        self.ewmh.setWmState(self.window, 1, '_NET_WM_STATE_FULLSCREEN')
+
+        # Dock is interpreted like a panel, no borders and won't cause other panels to vanish (like fullscreen)
+        wm_window_type = display.intern_atom('_NET_WM_WINDOW_TYPE')
+        wm_window_type_dock = display.intern_atom('_NET_WM_WINDOW_TYPE_DOCK')
+        self.window.change_property(wm_window_type, Xatom.ATOM, 32, [wm_window_type_dock], X.PropModeReplace)
+
         # Don't show the icon in the task bar
         self.ewmh.setWmState(self.window, 1, '_NET_WM_STATE_SKIP_TASKBAR')
+        self.ewmh.setWmState(self.window, 1, '_NET_WM_STATE_SKIP_PAGER')
 
-#        self.ewmh.setWmState(self.window, 1, '_MOTIF_WM_HINTS')
-        
+        #self.ewmh.setWmState(self.window, 1, '_MOTIF_WM_HINTS')
 
         # Apply changes
         display.flush()
+
 
     # Main loop, handling events
     def loop(self):
@@ -101,7 +106,32 @@ class OutlineWindow:
 #    OutlineWindow(display.Display(), 0, 0, 200, 200).loop()
 
 def setup(xdisplay, zp: ZoneProfile):
+
+    # find available space (no panels)
+    from collections import namedtuple
+    WorkArea = namedtuple('WorkArea', 'x y width height')
+    work_area_property = xdisplay.screen().root.get_full_property(xdisplay.intern_atom('_NET_WORKAREA'), Xatom.CARDINAL)
+    print(f"{work_area_property.value=}")
+    # work_area_property.value is a list of desktops of repeating x,y,w,h specs
+    # this includes virtual desktops, tbd on what this means for multi-monitor
+    work_area = WorkArea(*work_area_property.value[:4])
+    print(f"{work_area=}")
+
+    # todo: multi-monitors
+    # todo: lw border too thick on bottom, gets cut off by panel
+    # todo: not a problem, but window size shouldn't be larger than render size, no need
+    # todo: don't make one window-per-zone if it can be avoided, just one and draw zones in it
+
+    # todo: move this safe-zone logic to zp.zones definition
+    # (right now window resizing won't use the safe zone [!])
     for zone in zp.zones:
         print(f"{zone.x=}, {zone.y=}, {zone.width=}, {zone.height=}")
         #OutlineWindow(xdisplay, zone.x, zone.y-1156, zone.width, zone.height)
+        OutlineWindow(
+            xdisplay,
+            zone.x if zone.x >= work_area.x else work_area.x,
+            zone.y if zone.y >= work_area.y else work_area.y,
+            zone.width if zone.width <= work_area.width else work_area.width,
+            zone.height if zone.height <= work_area.height else work_area.height,
+        )
 
