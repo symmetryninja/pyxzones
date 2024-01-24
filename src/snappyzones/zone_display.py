@@ -2,6 +2,7 @@
 from Xlib import X, Xutil, Xatom
 from Xlib.ext import shape
 from ewmh import EWMH
+import logging
 
 from .zoning import ZoneProfile
 
@@ -105,17 +106,14 @@ class OutlineWindow:
 #if __name__ == '__main__':
 #    OutlineWindow(display.Display(), 0, 0, 200, 200).loop()
 
-def setup(xdisplay, zp: ZoneProfile):
 
-    # find available space (no panels)
-    from collections import namedtuple
-    WorkArea = namedtuple('WorkArea', 'x y width height')
-    work_area_property = xdisplay.screen().root.get_full_property(xdisplay.intern_atom('_NET_WORKAREA'), Xatom.CARDINAL)
-    print(f"{work_area_property.value=}")
-    # work_area_property.value is a list of desktops of repeating x,y,w,h specs
-    # this includes virtual desktops, tbd on what this means for multi-monitor
-    work_area = WorkArea(*work_area_property.value[:4])
-    print(f"{work_area=}")
+
+def setup(xdisplay, zp: ZoneProfile):
+    from . import x
+    # todo: get_current_virtual_desktop needs to be called on-move as well
+    work_areas = x.get_work_areas(xdisplay, x.get_current_virtual_desktop(xdisplay))
+    # todo:
+    work_area = work_areas[0]
 
     # todo: multi-monitors
     # todo: lw border too thick on bottom, gets cut off by panel
@@ -124,9 +122,8 @@ def setup(xdisplay, zp: ZoneProfile):
 
     # todo: move this safe-zone logic to zp.zones definition
     # (right now window resizing won't use the safe zone [!])
-    for zone in zp.zones:
-        print(f"{zone.x=}, {zone.y=}, {zone.width=}, {zone.height=}")
-        #OutlineWindow(xdisplay, zone.x, zone.y-1156, zone.width, zone.height)
+    for zone in zp.zones[0]:
+        logging.info(f"creating window for zone: {zone=}")
         OutlineWindow(
             xdisplay,
             zone.x if zone.x >= work_area.x else work_area.x,

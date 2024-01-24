@@ -1,7 +1,7 @@
 from Xlib import X, XK
 from Xlib.error import BadDrawable, XError
 from Xlib.display import Display
-
+import logging
 
 def active_window(display, window_id=None):
     if not window_id:
@@ -35,39 +35,18 @@ def geometry_deltas(window):
     dh = pg.height - wg.height
     return dx, dy, dw, dh
 
-
-def shift_window(self, keysym, stretch=False):
-    try:
-        display = Display()
-        zone_profile = self.zp
-        window = active_window(display)
-        wg = window.get_geometry()
-        dx, dy, dw, dh = geometry_deltas(window)
-        pg = window.query_tree().parent.query_tree().parent.get_geometry()
-        zone = zone_profile.find_zone(pg.x + pg.width / 2, pg.y + pg.height / 2, keysym)
-        if window and zone:
-            window.configure(
-                x=zone.x,
-                y=zone.y,
-                width=zone.width - dx,
-                height=zone.height - dy,
-                stack_mode=X.Above,
-            )
-            display.sync()
-    except BadDrawable:
-        pass
-
+from . import x as xhelper
 
 def snap_window(self, x, y):
     try:
         display = Display()
         zone_profile = self.zp
         window = active_window(display)
-        dx, dy, dw, dh = geometry_deltas(window)
-        #print(f"snap_window:　{dx=}, {dy=}, {dw=}, {dh=}")
-        zone = zone_profile.find_zones(self, x, y)
+        #dx, dy, dw, dh = geometry_deltas(window)
+        #logging.debug(f"snap_window:　{dx=}, {dy=}, {dw=}, {dh=}")
+        zone = zone_profile.find_zones(xhelper.get_current_virtual_desktop(display), self, x, y)
         if window and zone:
-            print(f"window.configure(x={zone.x}, y={zone.y}, width={zone.width}, height={zone.height})")
+            logging.debug(f"window.configure(x={zone.x}, y={zone.y}, width={zone.width}, height={zone.height})")
             window.configure(
                 x=zone.x,
                 y=zone.y,

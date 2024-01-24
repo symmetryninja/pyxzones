@@ -4,6 +4,10 @@ from .service import Service
 from .process import launch_background_process, stop_background_process
 import sys
 
+import logging
+# todo: read from cmd line --log
+logging.basicConfig(level=logging.DEBUG)
+
 # TODO:　Proper(?) command line parsing
 def main():
     if len(sys.argv) == 1:

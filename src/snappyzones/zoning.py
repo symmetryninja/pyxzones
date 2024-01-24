@@ -1,4 +1,5 @@
 from Xlib import XK
+import logging
 
 from .conf.settings import SETTINGS
 
@@ -32,15 +33,18 @@ class Zone:
             (self.x, self.y + self.height),
         ]
 
+    def __repr__(self):
+        return f"{{x={self.x}, y={self.y}, w={self.width}, h={self.height}}}"
+
 
 class ZoneProfile:
     def __init__(self, zones) -> None:
         self.zones = zones
 
-    def find_zones(self, service, x, y):
+    def find_zones(self, virtual_desktop, service, x, y):
         _zones = []
         for coordinate in service.coordinates:
-            for item in self.zones:
+            for item in self.zones[virtual_desktop]:
                 if item.check(*coordinate) and item not in _zones:
                     _zones.append(item)
                     break
@@ -66,8 +70,8 @@ class ZoneProfile:
 
         # stretch first zone into last zone
         elif len(_zones) == 2:
-            initial_zone = self.find_zone(*service.coordinates[0])
-            final_zone = self.find_zone(*service.coordinates[-1])
+            initial_zone = self.find_zone(virtual_desktop, *service.coordinates[0])
+            final_zone = self.find_zone(virtual_desktop, *service.coordinates[-1])
             slope = abs(
                 (initial_zone.y - final_zone.y) / (initial_zone.x - final_zone.x)
             )
@@ -94,52 +98,32 @@ class ZoneProfile:
             return Zone(x_min_zone.x, y_min_zone.y, width, height)
         return Zone(x_min_zone.x, y_min_zone.y, width, height)
 
-    def find_zone(self, x, y, shift=None):
-        for index, item in enumerate(self.zones):
-            if item.check(x, y):
-                if not shift:
-                    obj_i = index
-                    return self._shift_and_return(obj_i)
-                elif shift == XK.XK_Left:
-                    obj_i = (index - 1) % len(self.zones)
-                    return self._shift_and_return(obj_i)
 
-                elif shift == XK.XK_Right:
-                    obj_i = (index + 1) % len(self.zones)
-                    return self._shift_and_return(obj_i)
+    def find_zone(self, virtual_desktop, x, y):
+        #for index, item in enumerate(self.zones[virtual_desktop]):
+        print(self.zones)
+        print(virtual_desktop)
+        print(x, y)
+        for zone in self.zones[virtual_desktop]:
+            if zone.check(x, y):
+                return zone#self.zones[virtual_desktop][index]
         return None
 
-    def _shift_and_return(self, obj_i):
-        obj = self.zones[obj_i]
-        self.zones = self.zones[obj_i:] + self.zones[:obj_i]
-        return obj
 
     @staticmethod
-    def get_safe_display(monitor, protected_area):
-        return{
-            "virtual_x": monitor['virtual_x'] + protected_area['left'] * monitor['scale'],
-            "virtual_y": monitor['virtual_y'] + protected_area['top'] * monitor['scale'],
-            "virtual_width": monitor['virtual_width'] - (protected_area['left'] + protected_area['right']) * monitor['scale'],
-            "virtual_height": monitor['virtual_height'] - (protected_area['top'] + protected_area['bottom']) * monitor['scale'],
-        }
-    
-    @staticmethod
-    def zones_for_monitor(monitor, zone_spec):
+    def get_zones_for_monitor_work_area(monitor, work_area, zone_spec):
         zones = []
 
-        protected_area = zone_spec['protected_area'] if zone_spec['protected_area'] else { "left": 0, "right": 0, "top": 0, "bottom": 0 }
-        virtual_display = ZoneProfile.get_safe_display(monitor, protected_area)
-        
-        x_offset = virtual_display['virtual_x']
-        y_offset = virtual_display['virtual_y']
+        x_offset = work_area.x
+        y_offset = work_area.y
         y_consumed = 0
 
         for row in zone_spec['rows']:
-            height = row['height_pct'] / 100 * virtual_display['virtual_height']
+            height = row['height_pct'] / 100 * work_area.height
 
             x_consumed = 0
             for column in row['columns']:
-                width = column['width_pct'] / 100 * virtual_display['virtual_width']
+                width = column['width_pct'] / 100 * work_area.width
 
                 zones.append({
                                 "x": int(x_offset + x_consumed),
@@ -154,53 +138,37 @@ class ZoneProfile:
 
         return zones
 
+
     @staticmethod
-    def from_pct_mutliscreen(monitors):
-        
+    def get_zones_per_virtual_desktop(monitors, work_areas):
+        zones = []
         zone_spec = SETTINGS.zones
 
-        # TODO:　protected_area impl
-        # TODO:　grid-based layout? allow nested column/rows?
+        for desktop in range(len(work_areas)):
+            desktop_zones = []
+            single_workarea = len(work_areas[desktop]) == 1
+            for monitor in range(len(monitors)):
+                desktop_zones += ZoneProfile.get_zones_for_monitor_work_area(
+                    monitors[monitor],
+                    work_areas[desktop][0] if single_workarea else work_areas[desktop][monitor],
+                    zone_spec['displays'][monitor]
+                )
+            zones.append(desktop_zones)
 
-        zones = []
-        for display_index in range(len(monitors)):#range(len(zone_spec['displays'])):
 
-            zones += ZoneProfile.zones_for_monitor(monitors[display_index], zone_spec['displays'][display_index])
+        print("************************************************************")
+        logging.info("  zones:")
+        for desktop in range(0, len(zones)):
+            logging.info(f"  desktop {desktop}:")
+            for zone in zones[desktop]:
+                logging.info(f"\t{zone=}")
+        print("************************************************************")
 
-            """
-            display = zone_spec['displays'][display_index]
-            virtual_display = monitors[display_index]
-            
-            #print(virtual_display)
+        #logging.debug(f"{zones=}")
+        #return zones
 
-            y_offset = virtual_display['virtual_y']
-            x_offset = virtual_display['virtual_x']
-            y_consumed = 0
-
-            for row in display['rows']:
-                height = row['height_pct'] / 100 * virtual_display['virtual_height'] #　not a real representation of height, X11 scaling is odd
-
-                x_consumed = 0
-                for column in row['columns']:
-                    width = column['width_pct'] / 100 * virtual_display['virtual_width']
-
-                    zones.append({
-                                    "x": int(x_offset + x_consumed),
-                                    "y": int(y_offset + y_consumed),
-                                    "width": int(width),
-                                    "height": int(height),
-                                })
-
-                    x_consumed += width
-
-                y_consumed += height
-            """
-
-        print(zones)
-        return ZoneProfile([Zone(**obj) for obj in zones])
-
-    @staticmethod
-    def from_file():
-        if data := SETTINGS.zones:
-            return ZoneProfile([Zone(**obj) for obj in data])
-        return ZoneProfile([])
+        # todo: refactor, if `Zone` is useful just apply it in called functions above
+        zone_profile = []
+        for desktop in range(len(work_areas)):
+            zone_profile.append([Zone(**zone) for zone in zones[desktop]])
+        return ZoneProfile(zone_profile)
