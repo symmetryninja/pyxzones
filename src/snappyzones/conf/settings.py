@@ -1,20 +1,5 @@
-import os.path
-import json
-
-
-HERE = os.path.abspath(os.path.dirname(__file__))
-
 
 class Settings:
-    @property
-    def pid(self):
-        if res := self._read(self._pid_file):
-            return int(res)
-        return None
-
-    @pid.setter
-    def pid(self, _pid):
-        self._write(self._pid_file, str(_pid))
 
     # TODO:　This lets columns exist in rows but that's all the flexibility
     # Need to rethink this, pixels are fine now that scaling is known but not very practical
@@ -130,20 +115,6 @@ class Settings:
     @property
     def keybindings(self):
         return ['Alt_L'] #["Shift_L"]
-
-    @property
-    def _pid_file(self):
-        return os.path.join(HERE, ".pid")
-
-    def _read(self, path, default=None):
-        if os.path.isfile(path):
-            with open(path, "r") as f:
-                return f.read()
-        return default
-
-    def _write(self, path, obj):
-        with open(path, "w") as f:
-            f.write(obj)
 
 
 SETTINGS = Settings()

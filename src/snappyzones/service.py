@@ -9,7 +9,10 @@ from .snap import snap_window
 from .zoning import ZoneProfile
 from .conf.settings import SETTINGS
 from . import x
+from .types import Coordinates
 
+from .zone_display import setup_zone_display
+from gi.repository import GLib
 
 class Service:
     def __init__(self) -> None:
@@ -17,16 +20,10 @@ class Service:
             XK.string_to_keysym(key): False for key in SETTINGS.keybindings
         }
 
-#        self.zp = ZoneProfile.from_file()
-        self.coordinates = Coordinates()
-
         self.display = Display()
         self.root = self.display.screen().root
+        self.coordinates = Coordinates()
 
-        #　TODO: change for screen / resolution changes & recalculate zones
-        #logging.debug(self.display.xinerama_query_screens())
-        #self.zp = ZoneProfile.from_pct_mutliscreen(self.display.xinerama_query_screens())
-        
         monitors = x.get_monitors(self.display, self.root)
         logging.debug(f"{monitors=}")
 
@@ -45,11 +42,12 @@ class Service:
         self.zp = ZoneProfile.get_zones_per_virtual_desktop(monitors, work_areas)
 
 
+        #　TODO: change for screen / resolution changes & recalculate zones
         # todo: there should be some refresh point or cadence for monitor,
         # virtual desktops, scaling, and calculated zone information
 
-        from .zone_display import setup
-        setup(self.display, self.zp)
+        # todo: not sure what to do yet for desktop switching etc, kill and remake?
+        self.zone_window = setup_zone_display(self.display, self.zp)
 
 
         self.context = self.display.record_create_context(
@@ -70,12 +68,17 @@ class Service:
             ],
         )
 
+        self.active_keys_down = False
+        self.mouse_button_down = False
+
         self.display.record_enable_context(self.context, self.handler)
         self.display.record_free_context(self.context)
 
     def handler(self, reply):
         data = reply.data
+
         while len(data):
+            # todo: if Escape is pressed, cancel snapping
 
             event, data = rq.EventField(None).parse_binary_value(
                 data, self.display.display, None, None
@@ -89,35 +92,28 @@ class Service:
                     )
 
             if all(self.active_keys.values()):
+                self.active_keys_down = True
+
+                if (event.type, event.detail) == (X.ButtonPress, X.Button1):
+                    self.mouse_button_down = True
+                    # Show zones when the condition of keys+mouse are active together
+                    GLib.idle_add(self.zone_window.show)
+
+                # todo: as mouse moves around, highlight snap zone in window
                 self.coordinates.add(event.root_x, event.root_y)
+
                 if (event.type, event.detail) == (X.ButtonRelease, X.Button1):
+                    self.mouse_button_down = False
                     #logging.debug(f"snap_window(self, {event.root_x}, {event.root_y})")
+                    #GLib.idle_add(self.zone_window.hide)
                     snap_window(self, event.root_x, event.root_y)
             else:
+                # Hide zones when mouse button is let off
+                if self.mouse_button_down == False:
+                    GLib.idle_add(self.zone_window.hide)
                 self.coordinates.clear()
 
     def listen(self):
         while True:
             self.root.display.next_event()
 
-
-class Coordinates:
-    def __init__(self) -> None:
-        self.x = []
-        self.y = []
-
-    def __getitem__(self, item):
-        """returns an (x,y) coordinate"""
-        return self.x[item], self.y[item]
-
-    def __iter__(self):
-        """iterate over (x,y) coordinates"""
-        return zip(self.x, self.y)
-
-    def add(self, x, y):
-        self.x.append(x)
-        self.y.append(y)
-
-    def clear(self):
-        self.x = []
-        self.y = []

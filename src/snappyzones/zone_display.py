@@ -1,134 +1,91 @@
-
-from Xlib import X, Xutil, Xatom
-from Xlib.ext import shape
-from ewmh import EWMH
 import logging
-
+import threading
 from .zoning import ZoneProfile
+from . import x
+
+import cairo
+import gi
+gi.require_version("Gtk", "3.0")
+from gi.repository import Gtk, Gdk
+
+class ZoneDisplayWindow(Gtk.Window):
+    def __init__(self, screen_width, screen_height, zones):
+        super(ZoneDisplayWindow, self).__init__()
+        self.set_position(Gtk.WindowPosition.CENTER)
+        self.set_border_width(30)
+        self.screen = self.get_screen()
+        self.visual = self.screen.get_rgba_visual()
+        # todo: still renders on top but doesn't take keyboard input
+        # would be nice for currently focused window to keep focus with
+        # this rendering immediately underneath
+        self.set_accept_focus(False)
+        self.set_decorated(False)
+        self.set_skip_taskbar_hint(True)
+        #self.set_keep_below(True)
+        #self.set_keep_above(True)
+        #self.maximize() # used if one window per monitor, but annoying to set up that way
+        self.set_position(Gtk.WindowPosition.NONE)
+        self.set_default_size(screen_width, screen_height)
+        self.set_size_request(screen_width, screen_height) # only way to force the larger size, classic hack
+        self.move(0, 0)
+        self.resize(screen_width, screen_height)
+        #self.fullscreen()
+        if self.visual != None and self.screen.is_composited():
+            self.set_visual(self.visual)
+
+        self.zones = zones
+
+        #box = Gtk.Box()
+        #btn = Gtk.Button(label="foo")
+        #box.add(btn)
+        #self.add(box)
+
+        rw = self.get_parent_window()
+        self.set_transient_for(rw)
+
+        self.set_app_paintable(True)
+        self.connect("draw", self.area_draw)
+        #self.show_all()
+
+        # need to set this after show_all
+        region = cairo.Region(cairo.RectangleInt(0, 0, 1, 1))
+        self.input_shape_combine_region(region)
 
 
-class OutlineWindow:
-    def __init__(self, display, x, y, w, h, lw=3):
-        self.d = display
-        self.screen = self.d.screen()
+    def area_draw(self, widget, cr):
+        print(f"{self.get_size()=}")
+        cr.set_source_rgba(.2, .2, .2, 0.2)
+        cr.set_operator(cairo.OPERATOR_SOURCE)
+        cr.paint()
+        cr.set_operator(cairo.OPERATOR_OVER)
 
-        self.WM_DELETE_WINDOW = self.d.intern_atom('WM_DELETE_WINDOW')
-        self.WM_PROTOCOLS = self.d.intern_atom('WM_PROTOCOLS')
-
-        # Creates a pixel map that will be used to draw the areas that aren't masked
-        bgpm = self.screen.root.create_pixmap(1, 1, self.screen.root_depth)
-
-        # In my case I chose the color of the rectangle to be red.
-        bggc = self.screen.root.create_gc(
-            foreground=0x7777ff,
-            background=self.screen.black_pixel
-        )
-
-        # we fill the pixel map with red 
-        bgpm.fill_rectangle(bggc, 0, 0, 1, 1)
-        geometry = self.screen.root.get_geometry()
-
-        # We then create a window with the background pixel map from above (a red window)
-        self.window = self.screen.root.create_window(
-            0, 0, geometry.width, geometry.height, 0,
-            self.screen.root_depth,
-            X.InputOutput,
-            X.CopyFromParent,
-            background_pixmap=bgpm,
-            event_mask=X.StructureNotifyMask,
-            colormap=X.CopyFromParent,
-        )
-
-        # We want to make sure we're notified of window destruction so we need to enable this protocol
-        self.window.set_wm_protocols([self.WM_DELETE_WINDOW])
-        self.window.set_wm_hints(flags=Xutil.StateHint, initial_state=Xutil.NormalState)
-
-        # Create an outer rectangle that will be the outer edge of the visible rectangle
-        outer_rect = self.window.create_pixmap(w, h, 1)
-        gc = outer_rect.create_gc(foreground=1, background=0)
-        # coordinates within the graphical context are always relative to itself - not the screen!
-        outer_rect.fill_rectangle(gc, 0, 0, w, h)
-        gc.free()
-
-        # Create an inner rectangle that is slightly smaller to represent the inner edge of the rectangle
-        inner_rect = self.window.create_pixmap(w - (lw * 2), h - (lw * 2), 1)
-        gc = inner_rect.create_gc(foreground=1, background=0)
-        inner_rect.fill_rectangle(gc, 0, 0, w - (lw * 2), h - (lw * 2))
-        gc.free()
-
-        # First add the outer rectangle within the window at x y coordinates
-        self.window.shape_mask(shape.SO.Set, shape.SK.Bounding, x, y, outer_rect)
-
-        # Now subtract the inner rectangle at the same coordinates + line width from the outer rect
-        # This creates a red rectangular outline that can be clicked through
-        self.window.shape_mask(shape.SO.Subtract, shape.SK.Bounding, x + lw, y + lw, inner_rect)
-        self.window.shape_select_input(0)
-        self.window.map()
-        
-        # use the python-ewmh lib to set extended attributes on the window. Make sure to do this after
-        # calling window.map() otherwise your attributes will not be received by the window.
-        self.ewmh = EWMH(display, self.screen.root)
-
-        # Always on top
-        self.ewmh.setWmState(self.window, 1, '_NET_WM_STATE_ABOVE')
-
-        # Dock is interpreted like a panel, no borders and won't cause other panels to vanish (like fullscreen)
-        wm_window_type = display.intern_atom('_NET_WM_WINDOW_TYPE')
-        wm_window_type_dock = display.intern_atom('_NET_WM_WINDOW_TYPE_DOCK')
-        self.window.change_property(wm_window_type, Xatom.ATOM, 32, [wm_window_type_dock], X.PropModeReplace)
-
-        # Don't show the icon in the task bar
-        self.ewmh.setWmState(self.window, 1, '_NET_WM_STATE_SKIP_TASKBAR')
-        self.ewmh.setWmState(self.window, 1, '_NET_WM_STATE_SKIP_PAGER')
-
-        #self.ewmh.setWmState(self.window, 1, '_MOTIF_WM_HINTS')
-
-        # Apply changes
-        display.flush()
+        for zone in self.zones:
+            print(f"{zone=}")
+            cr.set_source_rgba(0.6, 0.6, 1, 0.2)
+            cr.rectangle(zone.x, zone.y, zone.width, zone.height)
+            cr.fill()
+            cr.set_source_rgba(0.4, 0.4, 0.8, 0.2)
+            # todo: parameterize "border" thickness
+            # todo?: avoid double thickness border between zones
+            cr.rectangle(zone.x+5, zone.y+5, zone.width-10, zone.height-10)
+            cr.fill()
 
 
-    # Main loop, handling events
-    def loop(self):
-        while True:
-            e = self.d.next_event()
+def setup_zone_display(display, zone_profile: ZoneProfile):
+    current_virtual_desktop = x.get_current_virtual_desktop(display)
 
-            # Window has been destroyed, quit
-            if e.type == X.DestroyNotify:
-                break
+    print(f"{current_virtual_desktop=}")
+    print(f"{zone_profile.zones[current_virtual_desktop]=}")
 
-            # Somebody wants to tell us something
-            elif e.type == X.ClientMessage:
-                if e.client_type == self.WM_PROTOCOLS:
-                    fmt, data = e.data
-                    if fmt == 32 and data[0] == self.WM_DELETE_WINDOW:
-                        break
+    geometry = display.screen().root.get_geometry()
+    zone_window = ZoneDisplayWindow(
+        geometry.width, geometry.height,
+        zone_profile.zones[current_virtual_desktop]
+    )
 
-#if __name__ == '__main__':
-#    OutlineWindow(display.Display(), 0, 0, 200, 200).loop()
+    thread = threading.Thread(target=Gtk.main)
+    thread.daemon=True
+    thread.start()
 
-
-
-def setup(xdisplay, zp: ZoneProfile):
-    from . import x
-    # todo: get_current_virtual_desktop needs to be called on-move as well
-    work_areas = x.get_work_areas(xdisplay, x.get_current_virtual_desktop(xdisplay))
-    # todo:
-    work_area = work_areas[0]
-
-    # todo: multi-monitors
-    # todo: lw border too thick on bottom, gets cut off by panel
-    # todo: not a problem, but window size shouldn't be larger than render size, no need
-    # todo: don't make one window-per-zone if it can be avoided, just one and draw zones in it
-
-    # todo: move this safe-zone logic to zp.zones definition
-    # (right now window resizing won't use the safe zone [!])
-    for zone in zp.zones[0]:
-        logging.info(f"creating window for zone: {zone=}")
-        OutlineWindow(
-            xdisplay,
-            zone.x if zone.x >= work_area.x else work_area.x,
-            zone.y if zone.y >= work_area.y else work_area.y,
-            zone.width if zone.width <= work_area.width else work_area.width,
-            zone.height if zone.height <= work_area.height else work_area.height,
-        )
+    return zone_window
 
