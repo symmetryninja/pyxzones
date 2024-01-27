@@ -7,8 +7,8 @@ import logging
 
 from .snap import snap_window
 from .zoning import ZoneProfile
-from .conf.settings import SETTINGS
-from . import x
+from .settings import SETTINGS
+from . import xq
 from .types import Coordinates
 
 from .zone_display import setup_zone_display
@@ -24,11 +24,11 @@ class Service:
         self.root = self.display.screen().root
         self.coordinates = Coordinates()
 
-        monitors = x.get_monitors(self.display, self.root)
+        monitors = xq.get_monitors(self.display, self.root)
         logging.debug(f"{monitors=}")
 
-        number_of_virtual_desktops = x.get_number_of_virtual_desktops(self.display)
-        work_areas = x.get_work_areas_for_all_desktops(self.display, number_of_virtual_desktops)
+        number_of_virtual_desktops = xq.get_number_of_virtual_desktops(self.display)
+        work_areas = xq.get_work_areas_for_all_desktops(self.display, number_of_virtual_desktops)
         logging.debug(f"for all desktops:\n{work_areas=}")
 
         if not work_areas:
@@ -70,6 +70,9 @@ class Service:
 
         self.active_keys_down = False
         self.mouse_button_down = False
+        self.active_window = None
+        self.active_window_id = None
+        self.last_active_window_position = None
 
         self.display.record_enable_context(self.context, self.handler)
         self.display.record_free_context(self.context)
@@ -79,6 +82,9 @@ class Service:
 
         while len(data):
             # todo: if Escape is pressed, cancel snapping
+
+            active_window, active_window_id = xq.get_active_window(self.display)
+            print(active_window)
 
             event, data = rq.EventField(None).parse_binary_value(
                 data, self.display.display, None, None

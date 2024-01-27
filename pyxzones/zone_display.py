@@ -1,7 +1,7 @@
 import logging
 import threading
 from .zoning import ZoneProfile
-from . import x
+from . import xq
 
 import cairo
 import gi
@@ -72,7 +72,7 @@ class ZoneDisplayWindow(Gtk.Window):
 
 
 def setup_zone_display(display, zone_profile: ZoneProfile):
-    current_virtual_desktop = x.get_current_virtual_desktop(display)
+    current_virtual_desktop = xq.get_current_virtual_desktop(display)
 
     print(f"{current_virtual_desktop=}")
     print(f"{zone_profile.zones[current_virtual_desktop]=}")

@@ -2,7 +2,7 @@ from Xlib import XK
 import logging
 
 from .types import Zone
-from .conf.settings import SETTINGS
+from .settings import SETTINGS
 
 MEAN_PIXEL_TOLERANCE = 10
 

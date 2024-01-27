@@ -75,8 +75,9 @@ RECT get_work_area(const RECT *monitor_rect)
     return *monitor_rect;
 }
 """
-from Xlib import Xatom
+from Xlib import X, Xatom
 from Xlib.ext import randr
+from Xlib.error import XError
 import logging
 
 def get_monitors(display, root_window):
@@ -194,3 +195,9 @@ def get_work_areas_for_all_desktops(display, number_of_virtual_desktops):
         work_areas.append(get_work_areas(display, desktop))
     return work_areas
 
+def get_active_window(display):
+    window_id = display.screen().root.get_full_property(
+        display.intern_atom("_NET_ACTIVE_WINDOW"), X.AnyPropertyType
+    ).value[0]
+    # TODO: error check
+    return display.create_resource_object("window", window_id), window_id

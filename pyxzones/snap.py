@@ -1,22 +1,8 @@
 from Xlib import X, XK
-from Xlib.error import BadDrawable, XError
+from Xlib.error import BadDrawable
 from Xlib.display import Display
 import logging
-
-def active_window(display, window_id=None):
-    if not window_id:
-        window_id = (
-            display.screen()
-            .root.get_full_property(
-                display.intern_atom("_NET_ACTIVE_WINDOW"), X.AnyPropertyType
-            )
-            .value[0]
-        )
-    try:
-        return display.create_resource_object("window", window_id)
-    except XError:
-        return None
-
+from . import xq
 
 def geometry_deltas(window):
     """The window of an app usually sits within an Xorg parent frame, and we
@@ -35,16 +21,13 @@ def geometry_deltas(window):
     dh = pg.height - wg.height
     return dx, dy, dw, dh
 
-from . import x as xhelper
-
-def snap_window(self, x, y):
+def snap_window(self, window, x, y):
     try:
         display = Display()
         zone_profile = self.zp
-        window = active_window(display)
         #dx, dy, dw, dh = geometry_deltas(window)
         #logging.debug(f"snap_window:　{dx=}, {dy=}, {dw=}, {dh=}")
-        zone = zone_profile.find_zones(xhelper.get_current_virtual_desktop(display), self, x, y)
+        zone = zone_profile.find_zones(xq.get_current_virtual_desktop(display), self, x, y)
         if window and zone:
             logging.debug(f"window.configure(x={zone.x}, y={zone.y}, width={zone.width}, height={zone.height})")
             window.configure(
