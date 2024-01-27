@@ -14,11 +14,12 @@ def geometry_deltas(window):
     wg = window.get_geometry()
     dx, dy, dw, dh = 0, 0, 0, 0
     parent = window.query_tree().parent
-    pg = parent.get_geometry()
-    dx = pg.x - wg.x
-    dy = pg.y - wg.y
-    dw = pg.width - wg.width
-    dh = pg.height - wg.height
+    if parent:
+        pg = parent.get_geometry()
+        dx = pg.x - wg.x
+        dy = pg.y - wg.y
+        dw = pg.width - wg.width
+        dh = pg.height - wg.height
     return dx, dy, dw, dh
 
 from ewmh import EWMH
@@ -33,7 +34,7 @@ def snap_window(self, window, x, y):
 
         # todo: implement zone-merge around borders
         zone = self.zp.find_zone(xq.get_current_virtual_desktop(display), x, y)
-        logging.debug(f"\tlanding zone: {zone=}")
+        logging.debug(f"\tlanding zone: {zone}")
 
         """
         if window and zone:

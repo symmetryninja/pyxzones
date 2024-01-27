@@ -5,10 +5,10 @@ import sys
 
 import logging
 
-# todo: read from cmd line --log
+# todo: read from cmd line --log or -v[vv]
 logging.basicConfig(level=logging.DEBUG)
 
-# TODO:　Proper(?) command line parsing
+# TODO: Command line parsing & flags
 def main():
     if len(sys.argv) == 1:
         try:

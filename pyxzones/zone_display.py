@@ -35,11 +35,6 @@ class ZoneDisplayWindow(Gtk.Window):
 
         self.zones = zones
 
-        #box = Gtk.Box()
-        #btn = Gtk.Button(label="foo")
-        #box.add(btn)
-        #self.add(box)
-
         rw = self.get_parent_window()
         self.set_transient_for(rw)
 

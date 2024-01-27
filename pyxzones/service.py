@@ -72,6 +72,7 @@ class Service:
         self.active_window = None
         self.active_window_id = None
         self.last_active_window_position = None
+        self.active_window_has_moved = False
         self.zones_shown = False
 
         self.display.record_enable_context(self.context, self.handler)
@@ -86,6 +87,27 @@ class Service:
                 data, self.display.display, None, None
             )
 
+            #if event.type == X.MotionNotify:
+            #    print(f"{event.detail=}")  # 0 for movement, unsure when it wouldn't be 0
+            #
+            # consider only showing zones when active window has moved (inconsistent with FancyZones)
+            #
+            # can potentially enable highlighting of predicted landing zone(s)
+            #
+            # would also enable not showing zones when key(s)+click is active but no window is moving
+            # (can currently snap to cursor area even if mouse has just moved somewhere without
+            # dragging a window)
+            #
+            # but obviously a very spammy event so performing too much processing here may put
+            # the cpu load higher than it should be for this type of tool
+            #
+            # secondary, partially unrelated note:
+            # it can be nonobvious if the cursor is on the right side of a relative large window
+            # that the snapping is based on the cursor position and not the window position
+            #
+            # it may be better to snap based on the middle of the window's "title bar"
+            # even if we don't accurately have those coordianates (could use window.x+w/2, cursor y)
+            # or (window.window.x+w/2, window.y+<small number>)
             if (event.type, event.detail) == (X.ButtonPress, X.Button1):
                 self.mouse_button_down = True
 
@@ -109,7 +131,6 @@ class Service:
             elif self.zones_shown and (not self.mouse_button_down or not self.active_keys_down):
                 GLib.idle_add(self.zone_window.hide)
                 self.zones_shown = False
-                continue
 
 
     def listen(self):

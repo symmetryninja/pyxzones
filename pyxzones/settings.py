@@ -16,37 +16,10 @@ class Settings:
                 ]
             }
 
-        #return json.loads(
-            """
-            [
-                {
-                    "height": 1024,
-                    "width": 640,
-                    "x": 0,
-                    "y": 0
-                },
-                {
-                    "height": 1024,
-                    "width": 640,
-                    "x": 640,
-                    "y": 0
-                },
-                {
-                    "height": 1024,
-                    "width": 640,
-                    "x": 1280,
-                    "y": 0
-                }
-            ]
-            """
-        #)
-
-    @zones.setter
-    def zones(self, _zones):
-        pass
-
     @property
     def keybindings(self):
+        # Shift_L has some annoying window grid snapping functionality in Mutter/Cinnamon
+        # (so does Alt for window moving, but that can be disabled if desired)
         return ['Alt_L'] #["Shift_L"]
 
 

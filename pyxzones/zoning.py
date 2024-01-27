@@ -31,6 +31,8 @@ class ZoneProfile:
         #
         # so this will infer orientation by resoluion rather than relying on 'rotation'
         monitor_orientation = 'landscape' if monitor['width'] >= monitor['height'] else 'portrait'
+        #monitor_orientation = 'landscape' if monitor['rotation'] in (1, 4) else 'portrait'
+
 
         # todo: `monitor_orientation` and provided `orientation` below may mismatch
         # error?
@@ -103,10 +105,8 @@ class ZoneProfile:
                 logging.info(f"\t{zone=}")
         logging.info("************************************************************")
 
-        #logging.debug(f"{zones=}")
-        #return zones
-
         # todo: refactor, if `Zone` is useful just apply it in called functions above
+        # instead of using dicts as intermediaries
         zone_profile = []
         for desktop in range(len(work_areas)):
             zone_profile.append([Zone(**zone) for zone in zones[desktop]])
