@@ -79,6 +79,7 @@ from Xlib import X, Xatom
 from Xlib.ext import randr
 from Xlib.error import XError
 import logging
+from .types import WorkArea
 
 def get_monitors(display, root_window):
     screen_resources = randr.get_screen_resources(root_window)
@@ -119,9 +120,6 @@ def get_monitors(display, root_window):
 
     return monitors
 
-
-from collections import namedtuple
-WorkArea = namedtuple('WorkArea', 'x y width height')
 
 def get_current_virtual_desktop(display):
     desktop_index = display.screen().root.get_full_property(
@@ -195,9 +193,19 @@ def get_work_areas_for_all_desktops(display, number_of_virtual_desktops):
         work_areas.append(get_work_areas(display, desktop))
     return work_areas
 
-def get_active_window(display):
-    window_id = display.screen().root.get_full_property(
-        display.intern_atom("_NET_ACTIVE_WINDOW"), X.AnyPropertyType
+
+from Xlib.display import Display
+workaround_display = Display()
+def get_active_window():
+    # todo: this doesn't work with a passed in display, need to create one here
+    # figure out _what is going on_ with that
+    #
+    # current theory is that this may be thread related, perhaps can't reference
+    # the same Display() across different threads (so putting the definition above,
+    # out of the function doesn't help unless this function is only called from one thread)
+    window_id = workaround_display.screen().root.get_full_property(
+        workaround_display.intern_atom("_NET_ACTIVE_WINDOW"), X.AnyPropertyType
     ).value[0]
     # TODO: error check
-    return display.create_resource_object("window", window_id), window_id
+    return workaround_display.create_resource_object("window", window_id), window_id
+

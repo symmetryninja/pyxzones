@@ -21,13 +21,21 @@ def geometry_deltas(window):
     dh = pg.height - wg.height
     return dx, dy, dw, dh
 
+from ewmh import EWMH
+workaround_ewmh = EWMH()
+
 def snap_window(self, window, x, y):
+    logging.debug(f"  snap_window({x=}, {y=})")
     try:
         display = Display()
-        zone_profile = self.zp
         #dx, dy, dw, dh = geometry_deltas(window)
         #logging.debug(f"snap_window:　{dx=}, {dy=}, {dw=}, {dh=}")
-        zone = zone_profile.find_zones(xq.get_current_virtual_desktop(display), self, x, y)
+
+        # todo: implement zone-merge around borders
+        zone = self.zp.find_zone(xq.get_current_virtual_desktop(display), x, y)
+        logging.debug(f"\tlanding zone: {zone=}")
+
+        """
         if window and zone:
             logging.debug(f"window.configure(x={zone.x}, y={zone.y}, width={zone.width}, height={zone.height})")
             window.configure(
@@ -35,8 +43,32 @@ def snap_window(self, window, x, y):
                 y=zone.y,
                 width=zone.width,# - dx,
                 height=zone.height,# - dy,
-                stack_mode=X.Above,
+                stack_mode=X.Above
             )
+            window.change_attributes(win_gravity=X.NorthWestGravity, bit_gravity=X.StaticGravity)
             display.sync()
+            display.flush()
+        """
+        if window and zone:
+            # ewmh method is much more reliable than window.configure
+            #window = ewmh.getActiveWindow() # didn't know this method existed...
+            #workaround_ewmh.setMoveResizeWindow(window, x=zone.x, y=zone.y, w=zone.width, h=zone.height)
+            workaround_ewmh.setMoveResizeWindow(
+                window,
+                x=zone.x,
+                y=zone.y,
+                w=zone.width,
+                h=zone.height
+            )
+
+            # these window hints provide better movement of windows rather than arbitrary dimensions
+            # (without this, WM magic may cause windows to clip out of the usable work area)
+            if zone.orientation == 'landscape':
+                workaround_ewmh.setWmState(window, 1, '_NET_WM_STATE_MAXIMIZED_VERT')
+            elif zone.orientation == 'portrait':
+                workaround_ewmh.setWmState(window, 1, '_NET_WM_STATE_MAXIMIZED_HORZ')
+
+            workaround_ewmh.display.flush()
     except BadDrawable:
         pass
+

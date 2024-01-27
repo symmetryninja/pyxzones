@@ -10,110 +10,70 @@ MEAN_PIXEL_TOLERANCE = 10
 def mean(lst):
     return sum(lst) / len(lst)
 
-
-
-
-
 class ZoneProfile:
     def __init__(self, zones) -> None:
         self.zones = zones
 
-    def find_zones(self, virtual_desktop, service, x, y):
-        _zones = []
-        for coordinate in service.coordinates:
-            for item in self.zones[virtual_desktop]:
-                if item.check(*coordinate) and item not in _zones:
-                    _zones.append(item)
-                    break
-
-        if not _zones:
-            return None
-
-        if len(_zones) == 1:
-            return _zones.pop()
-
-        x_min_zone = min((i for i in _zones), key=lambda i: i.x)
-        y_min_zone = min((i for i in _zones), key=lambda i: i.y)
-
-        # if all zones are in the same row
-        if abs(mean(set(i.x for i in _zones)) - x_min_zone.x) < MEAN_PIXEL_TOLERANCE:
-            width = x_min_zone.width
-            height = sum(i.height for i in _zones)
-
-        # if all zones are in the same column
-        elif abs(mean(set(i.y for i in _zones)) - y_min_zone.y) < MEAN_PIXEL_TOLERANCE:
-            width = sum(i.width for i in _zones)
-            height = y_min_zone.height
-
-        # stretch first zone into last zone
-        elif len(_zones) == 2:
-            initial_zone = self.find_zone(virtual_desktop, *service.coordinates[0])
-            final_zone = self.find_zone(virtual_desktop, *service.coordinates[-1])
-            slope = abs(
-                (initial_zone.y - final_zone.y) / (initial_zone.x - final_zone.x)
-            )
-            if slope > 1:  # means we're stretching the height
-                x = x_min_zone.x
-                y = y_min_zone.y
-                width = initial_zone.width
-                height = initial_zone.height + final_zone.height
-            else:  # means we're stretching the width
-                x = x_min_zone.x
-                y = initial_zone.y
-                width = initial_zone.width + final_zone.width
-                height = initial_zone.height
-            return Zone(x, y, width, height)
-
-        # return a zone which covers all zones
-        else:
-            width, height = 0, 0
-            for z in _zones:
-                if z.corners[1][0] - x_min_zone.x > width:
-                    width = z.corners[1][0] - x_min_zone.x
-                if z.corners[3][1] - y_min_zone.y > height:
-                    height = z.corners[3][1] - y_min_zone.y
-            return Zone(x_min_zone.x, y_min_zone.y, width, height)
-        return Zone(x_min_zone.x, y_min_zone.y, width, height)
-
-
     def find_zone(self, virtual_desktop, x, y):
-        #for index, item in enumerate(self.zones[virtual_desktop]):
-        print(self.zones)
-        print(virtual_desktop)
-        print(x, y)
         for zone in self.zones[virtual_desktop]:
             if zone.check(x, y):
-                return zone#self.zones[virtual_desktop][index]
+                return zone
         return None
-
 
     @staticmethod
     def get_zones_for_monitor_work_area(monitor, work_area, zone_spec):
         zones = []
 
+        # the crtc_info rotation is set differently in some environments than others
+        # whilst it should represent monitor rotations, it may not always (for example,
+        # a virtual machine may represent monitors with portrait resolutions but a
+        # landscape 'rotation' value)
+        #
+        # so this will infer orientation by resoluion rather than relying on 'rotation'
+        monitor_orientation = 'landscape' if monitor['width'] >= monitor['height'] else 'portrait'
+
+        # todo: `monitor_orientation` and provided `orientation` below may mismatch
+        # error?
+
         # todo: consider splitting out offsets from zones calculation
         # gtk windows don't need offset to position within, but do need them to position windows
         x_offset = work_area.x
         y_offset = work_area.y
-        y_consumed = 0
 
-        for row in zone_spec['rows']:
-            height = row['height_pct'] / 100 * work_area.height
+        # todo: orientation is pigeonholed in here when it probably shouldn't be part of the Zone definition
 
+        if zone_spec['orientation'] == 'landscape':
+            total = sum(zone_spec['columns'])
             x_consumed = 0
-            for column in row['columns']:
-                width = column['width_pct'] / 100 * work_area.width
 
+            for column in zone_spec['columns']:
+                width = int(column / total * work_area.width)
                 zones.append({
                                 "x": int(x_offset + x_consumed),
-                                "y": int(y_offset + y_consumed),
-                                "width": int(width),
-                                "height": int(height),
+                                "y": y_offset,
+                                "width": width,
+                                "height": work_area.height,
+                                "orientation": monitor_orientation
                             })
-
                 x_consumed += width
 
-            y_consumed += height
+        elif zone_spec['orientation'] == 'portrait':
+            total = sum(zone_spec['rows'])
+            y_consumed = 0
+
+            for row in zone_spec['rows']:
+                height = int(row / total * work_area.height)
+                zones.append({
+                                "x": x_offset,
+                                "y": int(y_offset + y_consumed),
+                                "width": work_area.width,
+                                "height": height,
+                                "orientation": monitor_orientation
+                            })
+                y_consumed += height
+        else:
+            # todo: invalid or missing orientation error
+            pass
 
         return zones
 
@@ -135,13 +95,13 @@ class ZoneProfile:
             zones.append(desktop_zones)
 
 
-        print("************************************************************")
+        logging.info("************************************************************")
         logging.info("  zones:")
         for desktop in range(0, len(zones)):
             logging.info(f"  desktop {desktop}:")
             for zone in zones[desktop]:
                 logging.info(f"\t{zone=}")
-        print("************************************************************")
+        logging.info("************************************************************")
 
         #logging.debug(f"{zones=}")
         #return zones

@@ -53,29 +53,30 @@ class ZoneDisplayWindow(Gtk.Window):
 
 
     def area_draw(self, widget, cr):
-        print(f"{self.get_size()=}")
         cr.set_source_rgba(.2, .2, .2, 0.2)
         cr.set_operator(cairo.OPERATOR_SOURCE)
         cr.paint()
         cr.set_operator(cairo.OPERATOR_OVER)
 
         for zone in self.zones:
-            print(f"{zone=}")
             cr.set_source_rgba(0.6, 0.6, 1, 0.2)
             cr.rectangle(zone.x, zone.y, zone.width, zone.height)
             cr.fill()
-            cr.set_source_rgba(0.4, 0.4, 0.8, 0.2)
+
+            cr.set_source_rgba(0.4, 0.4, 0.8, 0.8)
             # todo: parameterize "border" thickness
             # todo?: avoid double thickness border between zones
+            cr.set_line_width(5)
             cr.rectangle(zone.x+5, zone.y+5, zone.width-10, zone.height-10)
-            cr.fill()
+            cr.stroke()
 
 
 def setup_zone_display(display, zone_profile: ZoneProfile):
     current_virtual_desktop = xq.get_current_virtual_desktop(display)
 
-    print(f"{current_virtual_desktop=}")
-    print(f"{zone_profile.zones[current_virtual_desktop]=}")
+    logging.debug(f"  setup_zone_display():")
+    logging.debug(f"\t{current_virtual_desktop=}")
+    logging.debug(f"\t{zone_profile.zones[current_virtual_desktop]=}")
 
     geometry = display.screen().root.get_geometry()
     zone_window = ZoneDisplayWindow(

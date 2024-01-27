@@ -1,5 +1,6 @@
 from Xlib import X, XK
 from Xlib.ext import record
+from Xlib.error import BadDrawable
 from Xlib.display import Display
 from Xlib.protocol import rq
 
@@ -9,7 +10,6 @@ from .snap import snap_window
 from .zoning import ZoneProfile
 from .settings import SETTINGS
 from . import xq
-from .types import Coordinates
 
 from .zone_display import setup_zone_display
 from gi.repository import GLib
@@ -22,7 +22,6 @@ class Service:
 
         self.display = Display()
         self.root = self.display.screen().root
-        self.coordinates = Coordinates()
 
         monitors = xq.get_monitors(self.display, self.root)
         logging.debug(f"{monitors=}")
@@ -73,6 +72,7 @@ class Service:
         self.active_window = None
         self.active_window_id = None
         self.last_active_window_position = None
+        self.zones_shown = False
 
         self.display.record_enable_context(self.context, self.handler)
         self.display.record_free_context(self.context)
@@ -82,42 +82,35 @@ class Service:
 
         while len(data):
             # todo: if Escape is pressed, cancel snapping
-
-            active_window, active_window_id = xq.get_active_window(self.display)
-            print(active_window)
-
             event, data = rq.EventField(None).parse_binary_value(
                 data, self.display.display, None, None
             )
 
+            if (event.type, event.detail) == (X.ButtonPress, X.Button1):
+                self.mouse_button_down = True
+
+            if (event.type, event.detail) == (X.ButtonRelease, X.Button1):
+                self.mouse_button_down = False
+                if self.active_keys_down:
+                    # todo?: track mouse movement events to see if active window is moving?
+                    active_window, active_window_id = xq.get_active_window()#self.display)
+                    #print(f"{active_window=}, {active_window_id=}")
+                    snap_window(self, active_window, event.root_x, event.root_y)
+
             if event.type in (X.KeyPress, X.KeyRelease):
                 keysym = self.display.keycode_to_keysym(event.detail, 0)
                 if keysym in self.active_keys:
-                    self.active_keys[keysym] = (
-                        True if event.type == X.KeyPress else False
-                    )
+                    self.active_keys[keysym] = (event.type == X.KeyPress)
+                self.active_keys_down = all(self.active_keys.values())
 
-            if all(self.active_keys.values()):
-                self.active_keys_down = True
+            if not self.zones_shown and (self.mouse_button_down and self.active_keys_down):
+                GLib.idle_add(self.zone_window.show)
+                self.zones_shown = True
+            elif self.zones_shown and (not self.mouse_button_down or not self.active_keys_down):
+                GLib.idle_add(self.zone_window.hide)
+                self.zones_shown = False
+                continue
 
-                if (event.type, event.detail) == (X.ButtonPress, X.Button1):
-                    self.mouse_button_down = True
-                    # Show zones when the condition of keys+mouse are active together
-                    GLib.idle_add(self.zone_window.show)
-
-                # todo: as mouse moves around, highlight snap zone in window
-                self.coordinates.add(event.root_x, event.root_y)
-
-                if (event.type, event.detail) == (X.ButtonRelease, X.Button1):
-                    self.mouse_button_down = False
-                    #logging.debug(f"snap_window(self, {event.root_x}, {event.root_y})")
-                    #GLib.idle_add(self.zone_window.hide)
-                    snap_window(self, event.root_x, event.root_y)
-            else:
-                # Hide zones when mouse button is let off
-                if self.mouse_button_down == False:
-                    GLib.idle_add(self.zone_window.hide)
-                self.coordinates.clear()
 
     def listen(self):
         while True:
