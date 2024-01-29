@@ -1,2 +1,2 @@
 #!/bin/sh
-python3 -m pyxzones
+python3 -m pyxzones --log-level=DEBUG "$@"

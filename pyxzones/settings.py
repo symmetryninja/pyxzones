@@ -1,3 +1,6 @@
+import os
+
+HERE = os.path.abspath(os.path.dirname(__file__))
 
 class Settings:
 
@@ -21,6 +24,10 @@ class Settings:
         # Shift_L has some annoying window grid snapping functionality in Mutter/Cinnamon
         # (so does Alt for window moving, but that can be disabled if desired)
         return ['Alt_L'] #["Shift_L"]
+
+    @property
+    def _pid_file(self):
+        return os.path.join(HERE, '.pid')
 
 
 SETTINGS = Settings()
