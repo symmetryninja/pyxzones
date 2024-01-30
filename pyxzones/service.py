@@ -115,9 +115,28 @@ class Service:
             if SETTINGS.wait_for_window_movement and not self.active_window_has_moved:
                 active_mode = False
 
+
             if not self.zones_shown and active_mode:
                 GLib.idle_add(self.zone_window.show)
                 self.zones_shown = True
+
+                # attempt to bring the active window above the zone window
+                #
+                # note: there are some edge cases where this timing may keep the
+                # zone window on top
+                #
+                # haven't found a good way to get this to execute after displaying
+                # the zone window as that occurs on the Gtk thread
+                #
+                # also this temporary display and remade window below seems required
+                # to have this actually execute properly, unclear as to why at the
+                # moment (threading?)
+                temporary_display = Display()
+                window = temporary_display.create_resource_object('window', self.active_window.id)
+                window.configure(stack_mode=X.Above)
+                window.set_input_focus(X.RevertToParent, X.CurrentTime)
+                temporary_display.sync()
+
             elif self.zones_shown and not active_mode:
                 GLib.idle_add(self.zone_window.hide)
                 self.zones_shown = False
