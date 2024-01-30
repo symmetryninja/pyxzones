@@ -63,24 +63,14 @@ class Service:
                 data, self.display.display, None, None
             )
 
-            # consider only showing zones when active window has moved (inconsistent with FancyZones)
+            # Commented out logic below works for tracking window movement,
+            # but is much more expensive than tracking cursor movement (X.MotionNotify
+            # already includes the event position) as identifying window coordinates
+            # is nontrivial.
             #
-            # can potentially enable highlighting of predicted landing zone(s)
-            #
-            # would also enable not showing zones when key(s)+click is active but no window is moving
-            # (can currently snap to cursor area even if mouse has just moved somewhere without
-            # dragging a window)
-            #
-            # but obviously a very spammy event so performing too much processing here may put
-            # the cpu load higher than it should be for this type of tool
-            #
-            # secondary, partially unrelated note:
-            # it can be nonobvious if the cursor is on the right side of a relative large window
-            # that the snapping is based on the cursor position and not the window position
-            #
-            # it may be better to snap based on the middle of the window's "title bar"
-            # even if we don't accurately have those coordianates (could use window.x+w/2, cursor y)
-            # or (window.window.x+w/2, window.y+<small number>)
+            # For the time being, the two seem functionally equivalent, so leaving in
+            # event based coordinates rather than window, but there may come a time when
+            # the latter is required
             if (event.type, event.detail) == (X.ButtonPress, X.Button1):
                 self.mouse_button_down = True
                 self.active_window, _ = xq.get_active_window()
@@ -103,7 +93,14 @@ class Service:
             if (event.type, event.detail) == (X.ButtonRelease, X.Button1):
                 self.mouse_button_down = False
                 if self.active_keys_down and not (SETTINGS.wait_for_window_movement and not self.active_window_has_moved):
-                    snap_window(self, self.active_window, event.root_x, event.root_y)
+                    if SETTINGS.snap_basis_point.lower() == 'window':
+                        window_coordinates = xq.get_window_coordinates(self.active_window)
+                        window_geometry = self.active_window.get_geometry()
+                        # NOTE: There's likely an edge case here since geomotry doesn't include extents (and even though most extents don't
+                        # seem to touch width) so the width may be more than what is referred to here, likely not by much though
+                        snap_window(self, self.active_window, window_coordinates[0] + window_geometry.width / 2, window_coordinates[1])
+                    else: # default to cursor
+                        snap_window(self, self.active_window, event.root_x, event.root_y)
                 self.active_window = None
                 self.active_window_has_moved = False
                 self.last_active_window_position = None

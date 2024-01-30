@@ -31,15 +31,25 @@ class Settings:
 
     @property
     def maximize_perpendicular_axis_on_snap(self):
-        # For now, default to True, move to settings file when re-added
-        #
-        # This is most useful for GTK3.0 windows with their self-determined window margin,
+        # This is most useful for GTK3.0 windows with their self-determined window margins,
         # but does not correct snapping to full zone on the display axis
-        return True
+        #
+        # This can also be useful for stubborn windows, like terminals, which may round down
+        # a given window size to align with the closest column/row, yet won't struggle with
+        # being maximized
+        return False
 
     @property
     def wait_for_window_movement(self):
         return True
+
+    @property
+    def snap_basis_point(self):
+        # Valid values: 'cursor' or 'window'
+        #
+        # 'cursor': will use the mouse cursor as the determining point for zone selection
+        # 'window': will use the middle of the top of the window as the determining point
+        return 'window'
 
 
 SETTINGS = Settings()
