@@ -120,6 +120,9 @@ def get_work_areas_for_all_desktops(display, number_of_virtual_desktops):
 from Xlib.display import Display
 workaround_display = Display()
 def get_active_window():
+    # didn't know this method from ewmh existed, is it equivalent?
+    #   ewmh.getActiveWindow()
+
     # todo: this doesn't work with a passed in display, need to create one here
     # figure out _what is going on_ with that
     #
@@ -131,4 +134,10 @@ def get_active_window():
     ).value[0]
     # TODO: error check
     return workaround_display.create_resource_object("window", window_id), window_id
+
+def get_window_frame_extents(window) -> list[int] | None:
+    extents = window.get_full_property(
+        workaround_display.intern_atom("_NET_FRAME_EXTENTS"), Xatom.CARDINAL
+    )
+    return extents.value if extents != None else None
 
