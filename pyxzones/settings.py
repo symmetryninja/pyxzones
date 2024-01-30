@@ -37,5 +37,10 @@ class Settings:
         # but does not correct snapping to full zone on the display axis
         return True
 
+    @property
+    def wait_for_window_movement(self):
+        return True
+
 
 SETTINGS = Settings()
+

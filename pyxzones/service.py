@@ -1,6 +1,5 @@
 from Xlib import X, XK
 from Xlib.ext import record
-from Xlib.error import BadDrawable
 from Xlib.display import Display
 from Xlib.protocol import rq
 
@@ -51,7 +50,6 @@ class Service:
         self.active_keys_down = False
         self.mouse_button_down = False
         self.active_window = None
-        self.active_window_id = None
         self.last_active_window_position = None
         self.active_window_has_moved = False
         self.zones_shown = False
@@ -65,9 +63,6 @@ class Service:
                 data, self.display.display, None, None
             )
 
-            #if event.type == X.MotionNotify:
-            #    print(f"{event.detail=}")  # 0 for movement, unsure when it wouldn't be 0
-            #
             # consider only showing zones when active window has moved (inconsistent with FancyZones)
             #
             # can potentially enable highlighting of predicted landing zone(s)
@@ -88,14 +83,30 @@ class Service:
             # or (window.window.x+w/2, window.y+<small number>)
             if (event.type, event.detail) == (X.ButtonPress, X.Button1):
                 self.mouse_button_down = True
+                self.active_window, _ = xq.get_active_window()
+                #window_coordinates = xq.get_window_coordinates(self.active_window)
+                #self.last_active_window_position = window_coordinates
+                #print(f"Picked up window at ({window_coordinates=})")
+                self.last_active_window_position = (event.root_x, event.root_y)
+
+            if event.type == X.MotionNotify and self.active_window != None:
+                #window_coordinates = xq.get_window_coordinates(self.active_window)
+                #print(f"Active window position is now ({window_coordinates=})")
+                #if self.last_active_window_position != window_coordinates:
+                #    self.last_active_window_position = window_coordinates
+                #    self.active_window_has_moved = True
+                if self.last_active_window_position != (event.root_x, event.root_y):
+                    self.last_active_window_position = (event.root_x, event.root_y)
+                    self.active_window_has_moved = True
+                # todo: may want to highlight a would-be landing zone here given new (x, y)
 
             if (event.type, event.detail) == (X.ButtonRelease, X.Button1):
                 self.mouse_button_down = False
-                if self.active_keys_down:
-                    # todo?: track mouse movement events to see if active window is moving?
-                    active_window, active_window_id = xq.get_active_window()#self.display)
-                    #print(f"{active_window=}, {active_window_id=}")
-                    snap_window(self, active_window, event.root_x, event.root_y)
+                if self.active_keys_down and not (SETTINGS.wait_for_window_movement and not self.active_window_has_moved):
+                    snap_window(self, self.active_window, event.root_x, event.root_y)
+                self.active_window = None
+                self.active_window_has_moved = False
+                self.last_active_window_position = None
 
             if event.type in (X.KeyPress, X.KeyRelease):
                 keysym = self.display.keycode_to_keysym(event.detail, 0)
@@ -103,10 +114,14 @@ class Service:
                     self.active_keys[keysym] = (event.type == X.KeyPress)
                 self.active_keys_down = all(self.active_keys.values())
 
-            if not self.zones_shown and (self.mouse_button_down and self.active_keys_down):
+            active_mode = self.mouse_button_down and self.active_keys_down
+            if SETTINGS.wait_for_window_movement and not self.active_window_has_moved:
+                active_mode = False
+
+            if not self.zones_shown and active_mode:
                 GLib.idle_add(self.zone_window.show)
                 self.zones_shown = True
-            elif self.zones_shown and (not self.mouse_button_down or not self.active_keys_down):
+            elif self.zones_shown and not active_mode:
                 GLib.idle_add(self.zone_window.hide)
                 self.zones_shown = False
 

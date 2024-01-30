@@ -141,3 +141,14 @@ def get_window_frame_extents(window) -> list[int] | None:
     )
     return extents.value if extents != None else None
 
+def get_window_coordinates(window) -> tuple[int, int] | None:
+    (x, y) = (0, 0)
+
+    while window:
+        geometry = window.get_geometry()
+        x += geometry.x
+        y += geometry.y
+        window = window.query_tree().parent
+
+    return (x, y)
+
