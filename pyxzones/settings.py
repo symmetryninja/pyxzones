@@ -51,6 +51,31 @@ class Settings:
         # 'window': will use the middle of the top of the window as the determining point
         return 'window'
 
+    # Inset in pixels
+    @property
+    def zone_border_inset(self) -> int:
+        return 5
+
+    # float (r, g, b, a)
+    @property
+    def zone_border_color(self) -> tuple[float, float, float, float]:
+        return (0.4, 0.4, 0.8, 0.8)
+
+    # Border thickness in pixels
+    @property
+    def zone_border_thickness(self) -> int:
+        return 5
+
+    # float (r, g, b, a)
+    @property
+    def zone_background_color(self) -> tuple[float, float, float, float]:
+        return (0.6, 0.6, 1.0, 0.2)
+
+    # Inset in pixels (x, y)
+    @property
+    def zone_background_inset(self) -> int:
+        return 0
+
 
 SETTINGS = Settings()
 

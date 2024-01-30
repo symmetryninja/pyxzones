@@ -1,7 +1,8 @@
 import logging
 import threading
-from .zoning import ZoneProfile
 from . import xq
+from .zoning import ZoneProfile
+from .settings import SETTINGS
 
 import cairo
 import gi
@@ -48,21 +49,31 @@ class ZoneDisplayWindow(Gtk.Window):
 
 
     def area_draw(self, widget, cr):
+        # TODO: Why these four lines are here again, remove?
         cr.set_source_rgba(.2, .2, .2, 0.2)
         cr.set_operator(cairo.OPERATOR_SOURCE)
         cr.paint()
         cr.set_operator(cairo.OPERATOR_OVER)
 
         for zone in self.zones:
-            cr.set_source_rgba(0.6, 0.6, 1, 0.2)
-            cr.rectangle(zone.x, zone.y, zone.width, zone.height)
+            cr.set_source_rgba(*SETTINGS.zone_background_color)
+            cr.rectangle(
+                zone.x + SETTINGS.zone_background_inset,
+                zone.y + SETTINGS.zone_background_inset,
+                zone.width - SETTINGS.zone_background_inset * 2,
+                zone.height - SETTINGS.zone_background_inset * 2
+            )
             cr.fill()
 
-            cr.set_source_rgba(0.4, 0.4, 0.8, 0.8)
-            # todo: parameterize "border" thickness
+            cr.set_source_rgba(*SETTINGS.zone_border_color)
             # todo?: avoid double thickness border between zones
-            cr.set_line_width(5)
-            cr.rectangle(zone.x+5, zone.y+5, zone.width-10, zone.height-10)
+            cr.set_line_width(SETTINGS.zone_border_thickness)
+            cr.rectangle(
+                zone.x + SETTINGS.zone_border_inset,
+                zone.y + SETTINGS.zone_border_inset,
+                zone.width - SETTINGS.zone_border_inset * 2,
+                zone.height - SETTINGS.zone_border_inset * 2
+            )
             cr.stroke()
 
 
