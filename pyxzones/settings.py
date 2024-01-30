@@ -29,5 +29,13 @@ class Settings:
     def _pid_file(self):
         return os.path.join(HERE, '.pid')
 
+    @property
+    def maximize_perpendicular_axis_on_snap(self):
+        # For now, default to True, move to settings file when re-added
+        #
+        # This is most useful for GTK3.0 windows with their self-determined window margin,
+        # but does not correct snapping to full zone on the display axis
+        return True
+
 
 SETTINGS = Settings()

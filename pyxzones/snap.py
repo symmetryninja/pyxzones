@@ -1,8 +1,8 @@
-from Xlib import X, XK
 from Xlib.error import BadDrawable
 from Xlib.display import Display
 import logging
 from . import xq
+from .settings import SETTINGS
 
 from ewmh import EWMH
 workaround_ewmh = EWMH()
@@ -42,13 +42,14 @@ def snap_window(self, window, x, y):
 
             # these window hints provide better movement of windows rather than arbitrary dimensions
             # (without this, WM magic may cause windows to clip out of the usable work area)
-            if zone.orientation == 'landscape':
-                workaround_ewmh.setWmState(window, 1, '_NET_WM_STATE_MAXIMIZED_VERT')
-            elif zone.orientation == 'portrait':
-                workaround_ewmh.setWmState(window, 1, '_NET_WM_STATE_MAXIMIZED_HORZ')
+            if SETTINGS.maximize_perpendicular_axis_on_snap:
+                if zone.orientation == 'landscape':
+                    workaround_ewmh.setWmState(window, 1, '_NET_WM_STATE_MAXIMIZED_VERT')
+                else:
+                    workaround_ewmh.setWmState(window, 1, '_NET_WM_STATE_MAXIMIZED_HORZ')
 
 
-            # certain application windows, for example:
+            # Certain application windows, for example:
             #    https://github.com/linuxmint/sticky
             #    https://wiki.gnome.org/Apps/SystemMonitor
             #
@@ -56,24 +57,21 @@ def snap_window(self, window, x, y):
             # type of "margin" applied to the window which is not measured (afaict)
             # separately from the window geometry
             #
-            # haven't looked deeply into it, but so far have been unable to find a
-            # workaround for proper zone placement
-            #
-            # the _NET_WM_STATE_MAXIMIZED_* code above helps ignore the extra space on
+            # The _NET_WM_STATE_MAXIMIZED_* code above helps ignore the extra space on
             # one dimension, but it remains on the other
             #
-            # interestingly, once maximized across an access, the geometry (say,
-            # width on a portrait monitor) will be larger than screen size available
-            # 1120 on a 1080 wide screen
+            # UPDATE: After some digging, these appear to be GTK3.0 windows with default
+            # margin CSS rules applied. The only fix _seems_ to be having tiling WM users
+            # (and pyxzones users) add custom user styling to ~/.config/gtk-3.0/gtk.css
+            # to remove the margin, if the window positioning oddness bothers them.
             #
-            # no idea how to figure out where this comes from
-            # is there a way to detect these windows programatically? is it always 20px
-            # around the window?
+            # NOTE: There seems to be an early GTK3.0 version of the fix targeting the
+            # "window-frame" CSS class and a newer fix targeting "window > decoration"
             #
-            # reference, seems related:
-            # https://unix.stackexchange.com/questions/168835/how-can-i-remove-the-window-padding-on-gtk3-apps-in-awesome-wm
-            #
-            # must be managed by user css? not externally?
+            # References:
+            # https://web.archive.org/web/20220520000107/https://elementaryos.stackexchange.com/questions/23972/gtk-3-22-migration-of-older-gtk-css-black-margin-on-elementaryos-apps
+            # https://web.archive.org/web/20220817014757/https://unix.stackexchange.com/questions/168835/how-can-i-remove-the-window-padding-on-gtk3-apps-in-awesome-wm
+
             workaround_ewmh.display.flush()
 
     except BadDrawable:
