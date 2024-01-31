@@ -27,7 +27,6 @@ def main():
         type=str.upper,
         help=argparse.SUPPRESS
     )
-
     args = parser.parse_args()
 
     log_level = logging.getLevelName(args.log_level)

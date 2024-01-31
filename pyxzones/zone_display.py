@@ -1,10 +1,9 @@
 import threading
-from .settings import SETTINGS
-
 import cairo
 import gi
 gi.require_version("Gtk", "3.0")
 from gi.repository import Gtk
+from .settings import SETTINGS
 
 class ZoneDisplayWindow(Gtk.Window):
     def __init__(self, screen_width, screen_height, zones):
@@ -24,39 +23,64 @@ class ZoneDisplayWindow(Gtk.Window):
         if self.visual != None and self.screen.is_composited():
             self.set_visual(self.visual)
 
-        self.zones = zones
-
         self.set_app_paintable(True)
         self.connect("draw", self.area_draw)
+
+        self.zones = zones
+        self.hover_zone = None
+
+        # NOTE: Order matters here, expanded as function parameters below
+        self.normal_zone_config = (
+            SETTINGS.zone_background_color,
+            SETTINGS.zone_background_inset,
+            SETTINGS.zone_border_color,
+            SETTINGS.zone_border_thickness,
+            SETTINGS.zone_border_inset
+        )
+        self.hover_zone_config = (
+            SETTINGS.hover_zone_background_color,
+            SETTINGS.hover_zone_background_inset,
+            SETTINGS.hover_zone_border_color,
+            SETTINGS.hover_zone_border_thickness,
+            SETTINGS.hover_zone_border_inset
+        )
+
+
+    def set_hover_zone(self, zone):
+        self.hover_zone = zone
+
+
+    def draw_zone(self, cr, zone, background_color, background_inset, border_color, border_thickness, border_inset):
+        cr.set_source_rgba(*background_color)
+        cr.rectangle(
+            zone.x + background_inset,
+            zone.y + background_inset,
+            zone.width - background_inset * 2,
+            zone.height - background_inset * 2
+        )
+        cr.fill()
+
+        cr.set_source_rgba(*border_color)
+        cr.set_line_width(border_thickness)
+        cr.rectangle(
+            zone.x + border_inset,
+            zone.y + border_inset,
+            zone.width - border_inset * 2,
+            zone.height - border_inset * 2
+        )
+        cr.stroke()
 
 
     def area_draw(self, widget, cr):
         # TODO: Why these four lines are here again, remove?
-        cr.set_source_rgba(.2, .2, .2, 0.2)
+        cr.set_source_rgba(0.2, 0.2, 0.2, 0.2)
         cr.set_operator(cairo.OPERATOR_SOURCE)
         cr.paint()
         cr.set_operator(cairo.OPERATOR_OVER)
 
         for zone in self.zones:
-            cr.set_source_rgba(*SETTINGS.zone_background_color)
-            cr.rectangle(
-                zone.x + SETTINGS.zone_background_inset,
-                zone.y + SETTINGS.zone_background_inset,
-                zone.width - SETTINGS.zone_background_inset * 2,
-                zone.height - SETTINGS.zone_background_inset * 2
-            )
-            cr.fill()
-
-            cr.set_source_rgba(*SETTINGS.zone_border_color)
-            # todo?: avoid double thickness border between zones
-            cr.set_line_width(SETTINGS.zone_border_thickness)
-            cr.rectangle(
-                zone.x + SETTINGS.zone_border_inset,
-                zone.y + SETTINGS.zone_border_inset,
-                zone.width - SETTINGS.zone_border_inset * 2,
-                zone.height - SETTINGS.zone_border_inset * 2
-            )
-            cr.stroke()
+            hover_zone = SETTINGS.highlight_hover_zone and zone == self.hover_zone
+            self.draw_zone(cr, zone, *(self.normal_zone_config if not hover_zone else self.hover_zone_config))
 
 
 def setup_zone_display(x_screen_width, x_screen_height, zones):

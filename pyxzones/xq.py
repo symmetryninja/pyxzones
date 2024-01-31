@@ -116,6 +116,9 @@ def get_window_frame_extents(display, window) -> list[int] | None:
 
 
 def get_window_coordinates(window) -> tuple[int, int] | None:
+    if window is None:
+        return None
+
     (x, y) = (0, 0)
 
     while window:

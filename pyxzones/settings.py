@@ -41,7 +41,7 @@ class Settings:
         # Valid values: 'cursor' or 'window'
         #
         # 'cursor': will use the mouse cursor as the determining point for zone selection
-        # 'window': will use the middle of the top of the window as the determining point
+        # 'window': will use the center of the top of the window as the determining point
         return 'window'
 
     # Inset (margin) in pixels
@@ -67,6 +67,35 @@ class Settings:
     # Inset (margin) in pixels
     @property
     def zone_background_inset(self) -> int:
+        return 0
+
+    @property
+    def highlight_hover_zone(self) -> bool:
+        return True
+
+    # Inset (margin) in pixels
+    @property
+    def hover_zone_border_inset(self) -> int:
+        return 5
+
+    # float (r, g, b, a)
+    @property
+    def hover_zone_border_color(self) -> tuple[float, float, float, float]:
+        return (0.8, 0.0, 0.6, 0.9)
+
+    # Border thickness in pixels
+    @property
+    def hover_zone_border_thickness(self) -> int:
+        return 5
+
+    # float (r, g, b, a)
+    @property
+    def hover_zone_background_color(self) -> tuple[float, float, float, float]:
+        return (0.8, 0.0, 0.6, 0.6)
+
+    # Inset (margin) in pixels
+    @property
+    def hover_zone_background_inset(self) -> int:
         return 0
 
 

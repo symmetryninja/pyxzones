@@ -7,7 +7,7 @@ def snap_window(self, window, x, y):
     logging.debug(f"  snap_window({x=}, {y=})")
     try:
         # TODO: implement zone-merge around borders
-        zone = self.zp.find_zone(self.ewmh.getShowingDesktop(), x, y)
+        zone = self.zone_profile.find_zone(self.ewmh.getShowingDesktop(), x, y)
         logging.debug(f"\tlanding zone: {zone}")
 
         if window and zone:
