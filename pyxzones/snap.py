@@ -1,23 +1,17 @@
 from Xlib.error import BadDrawable
-from Xlib.display import Display
 import logging
 from . import xq
 from .settings import SETTINGS
 
-from ewmh import EWMH
-workaround_ewmh = EWMH()
-
 def snap_window(self, window, x, y):
     logging.debug(f"  snap_window({x=}, {y=})")
     try:
-        display = Display()
-
-        # todo: implement zone-merge around borders
-        zone = self.zp.find_zone(xq.get_current_virtual_desktop(display), x, y)
+        # TODO: implement zone-merge around borders
+        zone = self.zp.find_zone(self.ewmh.getShowingDesktop(), x, y)
         logging.debug(f"\tlanding zone: {zone}")
 
         if window and zone:
-            extents = xq.get_window_frame_extents(window)
+            extents = xq.get_window_frame_extents(self.ewmh.display, window)
             # chrome, system monitor, software manager, etc. don't have extents
             # seemingly because they manage/render their own title bars
             # (tabs, search field, etc.)
@@ -32,7 +26,7 @@ def snap_window(self, window, x, y):
             el, er, et, eb = extents if extents != None else (0, 0, 0, 0)
 
             # ewmh method is much more reliable than window.configure
-            workaround_ewmh.setMoveResizeWindow(
+            self.ewmh.setMoveResizeWindow(
                 window,
                 x=zone.x,
                 y=zone.y,
@@ -44,10 +38,9 @@ def snap_window(self, window, x, y):
             # (without this, WM magic may cause windows to clip out of the usable work area)
             if SETTINGS.maximize_perpendicular_axis_on_snap:
                 if zone.orientation == 'landscape':
-                    workaround_ewmh.setWmState(window, 1, '_NET_WM_STATE_MAXIMIZED_VERT')
+                    self.ewmh.setWmState(window, 1, '_NET_WM_STATE_MAXIMIZED_VERT')
                 else:
-                    workaround_ewmh.setWmState(window, 1, '_NET_WM_STATE_MAXIMIZED_HORZ')
-
+                    self.ewmh.setWmState(window, 1, '_NET_WM_STATE_MAXIMIZED_HORZ')
 
             # Certain application windows, for example:
             #    https://github.com/linuxmint/sticky
@@ -72,7 +65,7 @@ def snap_window(self, window, x, y):
             # https://web.archive.org/web/20220520000107/https://elementaryos.stackexchange.com/questions/23972/gtk-3-22-migration-of-older-gtk-css-black-margin-on-elementaryos-apps
             # https://web.archive.org/web/20220817014757/https://unix.stackexchange.com/questions/168835/how-can-i-remove-the-window-padding-on-gtk3-apps-in-awesome-wm
 
-            workaround_ewmh.display.flush()
+            self.ewmh.display.flush()
 
     except BadDrawable:
         logging.debug(f"  snap_window failed with X.BadDrawable")

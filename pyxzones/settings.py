@@ -1,33 +1,26 @@
-import os
-
-HERE = os.path.abspath(os.path.dirname(__file__))
-
+# TODO: JSON-backed configuration with defaults below
 class Settings:
 
     @property
     def zones(self):
-            return {
-                "displays": [ # list of displays
-                    { # display 1, horizontal (from left to right in virtual display)
-                        "orientation": "landscape",
-                        "columns": [ 10, 80, 10 ]
-                    },
-                    { # display 2, vertical
-                        "orientation": "portrait",
-                        "rows": [ 35, 40, 25 ]
-                    },
-                ]
-            }
+        return {
+            "displays": [ # list of displays
+                { # display 1, horizontal (from left to right in virtual display)
+                    "orientation": "landscape",
+                    "columns": [ 10, 80, 10 ]
+                },
+                { # display 2, vertical
+                    "orientation": "portrait",
+                    "rows": [ 35, 40, 25 ]
+                },
+            ]
+        }
 
     @property
     def keybindings(self):
         # Shift_L has some annoying window grid snapping functionality in Mutter/Cinnamon
         # (so does Alt for window moving, but that can be disabled if desired)
         return ['Alt_L'] #["Shift_L"]
-
-    @property
-    def _pid_file(self):
-        return os.path.join(HERE, '.pid')
 
     @property
     def maximize_perpendicular_axis_on_snap(self):
@@ -51,7 +44,7 @@ class Settings:
         # 'window': will use the middle of the top of the window as the determining point
         return 'window'
 
-    # Inset in pixels
+    # Inset (margin) in pixels
     @property
     def zone_border_inset(self) -> int:
         return 5
@@ -71,7 +64,7 @@ class Settings:
     def zone_background_color(self) -> tuple[float, float, float, float]:
         return (0.6, 0.6, 1.0, 0.2)
 
-    # Inset in pixels (x, y)
+    # Inset (margin) in pixels
     @property
     def zone_background_inset(self) -> int:
         return 0

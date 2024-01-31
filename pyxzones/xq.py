@@ -1,8 +1,10 @@
-from Xlib import X, Xatom
+# TODO: Make this an extension of EWMH?
+
+from Xlib import Xatom
 from Xlib.ext import randr
-from Xlib.error import XError
 import logging
 from .types import WorkArea
+
 
 def get_monitors(display, root_window):
     screen_resources = randr.get_screen_resources(root_window)
@@ -44,23 +46,20 @@ def get_monitors(display, root_window):
     return monitors
 
 
-def get_current_virtual_desktop(display):
-    desktop_index = display.screen().root.get_full_property(
-        display.intern_atom('_NET_SHOWING_DESKTOP'), Xatom.CARDINAL
-    )
-    # TODO: error check
-    return desktop_index.value[0]
-
-
-# find available space (no panels)
+# Find available space (no panels)
 def get_work_areas(display, desktop):
-    # at least on mutter/cinnamon, manually looking for strut windows seems futile
-
+    # Fallback from best data to worst
+    #
+    #   _GTK_WORKAREAS_D<desktop>
+    #   _NET_WORKAREAS_D<desktop>
+    #   _NET_WORKAREA
+    #   RootWindow.get_geometry()
+    #
     gtk_work_area_d = display.screen().root.get_full_property(
         display.intern_atom(f"_GTK_WORKAREAS_D{desktop}"), Xatom.CARDINAL
     )
     if gtk_work_area_d != None:
-        logging.debug(f"{gtk_work_area_d=}")
+        logging.debug(f"gtk_work_area_d{desktop}: {gtk_work_area_d.value}")
         work_areas = [gtk_work_area_d.value[l:l+4] for l in range(0, len(gtk_work_area_d.value), 4)]
         return [WorkArea(*work_areas[i]) for i in range(0, len(work_areas))]
 
@@ -102,14 +101,6 @@ def get_work_areas(display, desktop):
     return [WorkArea(*[geometry.x, geometry.y, geometry.width, geometry.height])]
 
 
-def get_number_of_virtual_desktops(display):
-    desktop_index = display.screen().root.get_full_property(
-        display.intern_atom('_NET_NUMBER_OF_DESKTOPS'), Xatom.CARDINAL
-    )
-    # TODO: error check
-    return desktop_index.value[0]
-
-
 def get_work_areas_for_all_desktops(display, number_of_virtual_desktops):
     work_areas = []
     for desktop in range(0, number_of_virtual_desktops):
@@ -117,29 +108,12 @@ def get_work_areas_for_all_desktops(display, number_of_virtual_desktops):
     return work_areas
 
 
-from Xlib.display import Display
-workaround_display = Display()
-def get_active_window():
-    # didn't know this method from ewmh existed, is it equivalent?
-    #   ewmh.getActiveWindow()
-
-    # todo: this doesn't work with a passed in display, need to create one here
-    # figure out _what is going on_ with that
-    #
-    # current theory is that this may be thread related, perhaps can't reference
-    # the same Display() across different threads (so putting the definition above,
-    # out of the function doesn't help unless this function is only called from one thread)
-    window_id = workaround_display.screen().root.get_full_property(
-        workaround_display.intern_atom("_NET_ACTIVE_WINDOW"), X.AnyPropertyType
-    ).value[0]
-    # TODO: error check
-    return workaround_display.create_resource_object("window", window_id), window_id
-
-def get_window_frame_extents(window) -> list[int] | None:
+def get_window_frame_extents(display, window) -> list[int] | None:
     extents = window.get_full_property(
-        workaround_display.intern_atom("_NET_FRAME_EXTENTS"), Xatom.CARDINAL
+        display.intern_atom("_NET_FRAME_EXTENTS"), Xatom.CARDINAL
     )
     return extents.value if extents != None else None
+
 
 def get_window_coordinates(window) -> tuple[int, int] | None:
     (x, y) = (0, 0)

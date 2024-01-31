@@ -1,8 +1,8 @@
-from .service import Service
 import sys
 import argparse
 import logging
 from . import process
+from .service import Service
 
 
 def main():
@@ -24,13 +24,17 @@ def main():
         '--log-level',
         choices=['DEBUG', 'INFO', 'WARNING', 'ERROR', 'FATAL'],
         default='WARNING',
+        type=str.upper,
         help=argparse.SUPPRESS
     )
 
     args = parser.parse_args()
 
     log_level = logging.getLevelName(args.log_level)
-    logging.basicConfig(level=log_level)
+    logging.basicConfig(
+        level=log_level,
+        format="%(levelname)-8s %(message)s",
+    )
 
     if args.daemon:
         process.launch_daemon()

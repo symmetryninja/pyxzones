@@ -5,11 +5,14 @@ from Xlib.protocol import rq
 
 import logging
 
+from ewmh import EWMH
+
 from .snap import snap_window
 from .zoning import ZoneProfile
 from .settings import SETTINGS
 from . import xq
 
+import sys
 from .zone_display import setup_zone_display
 from gi.repository import GLib
 
@@ -19,19 +22,19 @@ class Service:
             XK.string_to_keysym(key): False for key in SETTINGS.keybindings
         }
 
-        self.display = Display()
-        self.root = self.display.screen().root
+        self.ewmh = EWMH()
 
-        monitors = xq.get_monitors(self.display, self.root)
+        monitors = xq.get_monitors(self.ewmh.display, self.ewmh.root)
         logging.debug(f"{monitors=}")
 
-        number_of_virtual_desktops = xq.get_number_of_virtual_desktops(self.display)
-        work_areas = xq.get_work_areas_for_all_desktops(self.display, number_of_virtual_desktops)
+        number_of_virtual_desktops = self.ewmh.getNumberOfDesktops()
+        work_areas = xq.get_work_areas_for_all_desktops(self.ewmh.display, number_of_virtual_desktops)
         logging.debug(f"for all desktops:\n{work_areas=}")
 
         if not work_areas:
-            # todo: raise exception
-            pass
+            # TODO: Don't fail out here, raise exception for main() to handle
+            logging.critical("Could not find work areas for rendering, potentially unsupported by window manager.")
+            sys.exit(1)
 
         if len(monitors) != len(work_areas[0]):
             logging.info("Operating on single virtual display work area")
@@ -40,12 +43,22 @@ class Service:
         self.zp = ZoneProfile.get_zones_per_virtual_desktop(monitors, work_areas)
 
 
-        #　TODO: change for screen / resolution changes & recalculate zones
+        # TODO: change for screen / resolution changes & recalculate zones
         # todo: there should be some refresh point or cadence for monitor,
         # virtual desktops, scaling, and calculated zone information
 
-        # todo: not sure what to do yet for desktop switching etc, kill and remake?
-        self.zone_window = setup_zone_display(self.display, self.zp)
+        # TODO: not sure what to do yet for desktop switching etc, kill and remake?
+        current_virtual_desktop = self.ewmh.getShowingDesktop()#self.ewmh.getShowingDesktop()
+
+        logging.debug(f"  setup_zone_display():")
+        logging.debug(f"\t{current_virtual_desktop=}")
+        logging.debug(f"\t{self.zp.zones[current_virtual_desktop]=}")
+
+        geometry = self.ewmh.root.get_geometry()
+        self.zone_window = setup_zone_display(
+            geometry.width, geometry.height,
+            self.zp.zones[current_virtual_desktop]
+        )
 
         self.active_keys_down = False
         self.mouse_button_down = False
@@ -58,9 +71,9 @@ class Service:
         data = reply.data
 
         while len(data):
-            # todo: if Escape is pressed, cancel snapping
+            # TODO: if Escape is pressed, cancel snapping
             event, data = rq.EventField(None).parse_binary_value(
-                data, self.display.display, None, None
+                data, self.ewmh.display.display, None, None
             )
 
             # Commented out logic below works for tracking window movement,
@@ -73,15 +86,13 @@ class Service:
             # the latter is required
             if (event.type, event.detail) == (X.ButtonPress, X.Button1):
                 self.mouse_button_down = True
-                self.active_window, _ = xq.get_active_window()
+                self.active_window = self.ewmh.getActiveWindow()
                 #window_coordinates = xq.get_window_coordinates(self.active_window)
                 #self.last_active_window_position = window_coordinates
-                #print(f"Picked up window at ({window_coordinates=})")
                 self.last_active_window_position = (event.root_x, event.root_y)
 
             if event.type == X.MotionNotify and self.active_window != None:
                 #window_coordinates = xq.get_window_coordinates(self.active_window)
-                #print(f"Active window position is now ({window_coordinates=})")
                 #if self.last_active_window_position != window_coordinates:
                 #    self.last_active_window_position = window_coordinates
                 #    self.active_window_has_moved = True
@@ -106,7 +117,7 @@ class Service:
                 self.last_active_window_position = None
 
             if event.type in (X.KeyPress, X.KeyRelease):
-                keysym = self.display.keycode_to_keysym(event.detail, 0)
+                keysym = self.ewmh.display.keycode_to_keysym(event.detail, 0)
                 if keysym in self.active_keys:
                     self.active_keys[keysym] = (event.type == X.KeyPress)
                 self.active_keys_down = all(self.active_keys.values())
@@ -115,35 +126,19 @@ class Service:
             if SETTINGS.wait_for_window_movement and not self.active_window_has_moved:
                 active_mode = False
 
-
             if not self.zones_shown and active_mode:
                 GLib.idle_add(self.zone_window.show)
                 self.zones_shown = True
-
-                # attempt to bring the active window above the zone window
-                #
-                # note: there are some edge cases where this timing may keep the
-                # zone window on top
-                #
-                # haven't found a good way to get this to execute after displaying
-                # the zone window as that occurs on the Gtk thread
-                #
-                # also this temporary display and remade window below seems required
-                # to have this actually execute properly, unclear as to why at the
-                # moment (threading?)
-                temporary_display = Display()
-                window = temporary_display.create_resource_object('window', self.active_window.id)
-                window.configure(stack_mode=X.Above)
-                window.set_input_focus(X.RevertToParent, X.CurrentTime)
-                temporary_display.sync()
-
             elif self.zones_shown and not active_mode:
                 GLib.idle_add(self.zone_window.hide)
                 self.zones_shown = False
 
 
     def listen(self):
-        self.context = self.display.record_create_context(
+        # Not sure why this needs its own Display but display-referencing behavior
+        # becomes somewhat unpredictable without it
+        self.record_display = Display()
+        self.context = self.record_display.record_create_context(
             0,
             [record.AllClients],
             [
@@ -160,6 +155,6 @@ class Service:
                 }
             ],
         )
-        self.display.record_enable_context(self.context, self.event_handler)
-        self.display.record_free_context(self.context)
+        self.record_display.record_enable_context(self.context, self.event_handler)
+        self.record_display.record_free_context(self.context)
 
