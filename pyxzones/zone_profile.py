@@ -1,6 +1,7 @@
 import logging
-from .types import MergeZone, Zone, WorkArea
+
 from .settings import SETTINGS
+from .types import MergeZone, Zone, WorkArea
 
 
 class ZoneProfile:
@@ -85,34 +86,34 @@ class ZoneProfile:
         if not SETTINGS.merge_zone_size_preference or num_zones == 0:
             return merge_zones
 
-        merge_zone_half_size_multiplier = max(2, min(SETTINGS.merge_zone_size_preference, 25)) / 100
+        merge_zone_size_multiplier = max(2, min(SETTINGS.merge_zone_size_preference, 25)) / 100
 
         for index, zone in enumerate(zones):
             if index == num_zones - 1:
                 break
+
+            next_zone = zones[index + 1]
+
             if zone.orientation == 'landscape':
                 merge_zone = MergeZone(
-                    x=int((zone.x + zone.width) - work_area.width * merge_zone_half_size_multiplier / 2),
+                    x=int((zone.x + zone.width) - work_area.width * merge_zone_size_multiplier / 2),
                     y=zone.y,
-                    width=int(work_area.width * merge_zone_half_size_multiplier),
+                    width=int(work_area.width * merge_zone_size_multiplier),
                     height=zone.height,
-                    orientation=zone.orientation
+                    orientation=zone.orientation,
+                    zones=(zone, next_zone),
+                    surface=Zone(zone.x, zone.y, zone.width + next_zone.width, zone.height, zone.orientation)
                 )
             else:
                 merge_zone = MergeZone(
                     x=zone.x,
-                    y=int((zone.y + zone.height) - work_area.height * merge_zone_half_size_multiplier / 2),
+                    y=int((zone.y + zone.height) - work_area.height * merge_zone_size_multiplier / 2),
                     width=zone.width,
-                    height=int(work_area.height * merge_zone_half_size_multiplier),
-                    orientation=zone.orientation
+                    height=int(work_area.height * merge_zone_size_multiplier),
+                    orientation=zone.orientation,
+                    zones=(zone, next_zone),
+                    surface=Zone(zone.x, zone.y, zone.width, zone.height + next_zone.height, zone.orientation)
                 )
-            next_zone = zones[index + 1]
-            merge_zone.zones = (zone, next_zone)
-            merge_zone.surface = Zone(zone.x, zone.y, zone.width, zone.height, zone.orientation)
-            if zone.orientation == 'landscape':
-                merge_zone.surface.width = zone.width + next_zone.width
-            else:
-                merge_zone.surface.height = zone.height + next_zone.height
             merge_zones.append(merge_zone)
 
         return merge_zones

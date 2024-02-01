@@ -1,9 +1,14 @@
-import os, sys, logging, signal
+import logging
+import os
+import signal
+import sys
 from pathlib import Path
+
+from .service import Service, FatalXQueryFailure
 from . import config
-from .service import Service
 
 PID_FILE = 'pyxzones.pid'
+
 
 def check_pid_running(pid: int):
     if not pid:
@@ -43,6 +48,18 @@ def save_stored_pid(pid: int) -> bool:
         return False
 
 
+def start() -> None:
+    try:
+        service = Service()
+        service.listen()
+    except FatalXQueryFailure as exception:
+        logging.critical(exception)
+        sys.exit(1)
+    except KeyboardInterrupt:
+        # Mute the Exception output
+        sys.exit(0)
+
+
 def launch_daemon() -> None:
     pid = get_stored_pid()
     if check_pid_running(pid):
@@ -61,8 +78,7 @@ def launch_daemon() -> None:
     save_stored_pid(pid)
     logging.debug(f"Started process: {pid}")
 
-    service = Service()
-    service.listen()
+    start()
 
 
 def kill_daemon() -> None:
@@ -76,4 +92,3 @@ def kill_daemon() -> None:
     os.kill(pid, signal.SIGTERM)
     print(f"Terminated process: {pid}")
     Path(config.get_data_directory_path(), PID_FILE).unlink()
-

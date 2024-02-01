@@ -1,8 +1,13 @@
-import sys
 import argparse
 import logging
+import sys
+from json.decoder import JSONDecodeError
+
+from .settings import SETTINGS
+from . import config
 from . import process
-from .service import Service
+
+SETTINGS_FILE = 'pyxzones.json'
 
 
 def main():
@@ -35,17 +40,21 @@ def main():
         format="%(levelname)-8s %(message)s",
     )
 
+    config_file = config.get_config_file_path(SETTINGS_FILE)
+    if config_file is not None:
+        with config_file.open() as file:
+            try:
+                SETTINGS.load_from_file(file)
+            except JSONDecodeError:
+                logging.fatal(f"Failed to parse user configuration json file located at {config_file}")
+                sys.exit(1)
+
     if args.daemon:
         process.launch_daemon()
     elif args.kill:
         process.kill_daemon()
     else:
-        try:
-            service = Service()
-            service.listen()
-        except KeyboardInterrupt:
-            # Mute the Exception output
-            sys.exit(0)
+        process.start()
 
 
 if __name__ == "__main__":

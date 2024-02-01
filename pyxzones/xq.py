@@ -1,8 +1,7 @@
-# TODO: Make this an extension of EWMH?
-
+import logging
 from Xlib import Xatom
 from Xlib.ext import randr
-import logging
+
 from .types import WorkArea
 
 
@@ -112,7 +111,7 @@ def get_window_frame_extents(display, window) -> list[int] | None:
     extents = window.get_full_property(
         display.intern_atom("_NET_FRAME_EXTENTS"), Xatom.CARDINAL
     )
-    return extents.value if extents != None else None
+    return extents.value if extents != None else (0, 0, 0, 0)
 
 
 def get_window_coordinates(window) -> tuple[int, int] | None:
@@ -128,4 +127,3 @@ def get_window_coordinates(window) -> tuple[int, int] | None:
         window = window.query_tree().parent
 
     return (x, y)
-

@@ -1,4 +1,5 @@
-import stat, logging
+import logging
+import stat
 import xdg_base_dirs as xdg
 from pathlib import Path
 
@@ -10,6 +11,7 @@ Specification (v0.8 at time of writing):
 https://specifications.freedesktop.org/basedir-spec/0.8/
 
 """
+
 
 def get_config_file_path(filename: str) -> Path | None:
     xdg_config_home = xdg.xdg_config_home()
@@ -25,6 +27,11 @@ def get_config_file_path(filename: str) -> Path | None:
             logging.debug(f"Found configuration file at {file}")
             return file
 
+    file = Path(Path.home(), filename)
+    if file.exists():
+        logging.debug(f"Found configuration file at {file}")
+        return file
+
     return None
 
 
@@ -37,7 +44,7 @@ def get_data_directory_path() -> Path | None:
             return xdg_data_home
         else:
             logging.warning(f"Found XDG_DATA_HOME directory path at {xdg_data_home} but user doesn't appear to have write permissions")
-    else: # doesn't exist, try to create
+    else:  # doesn't exist, try to create
         try:
             xdg_data_home.mkdir(mode=700, parents=True)
             return xdg_data_home
@@ -61,4 +68,3 @@ def get_data_directory_path() -> Path | None:
                 logging.warning(f"Failed to create an XDG_DATA_DIR at {data_dir}")
 
     return None
-

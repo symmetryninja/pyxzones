@@ -1,8 +1,9 @@
-from Xlib.error import BadDrawable
 import logging
-from . import xq
+from Xlib.error import BadDrawable
+
 from .settings import SETTINGS
 from .types import MergeZone
+
 
 def snap_window(self, window, x, y):
     logging.debug(f"  snap_window({x=}, {y=})")
@@ -15,7 +16,7 @@ def snap_window(self, window, x, y):
         logging.debug(f"\tlanding zone: {zone}")
 
         if window and zone:
-            extents = xq.get_window_frame_extents(self.ewmh.display, window)
+            extents = self.ewmh.getWindowFrameExtents(window)
             # chrome, system monitor, software manager, etc. don't have extents
             # seemingly because they manage/render their own title bars
             # (tabs, search field, etc.)
@@ -27,7 +28,7 @@ def snap_window(self, window, x, y):
             # it seems like hooking into _NET_WM_MOVERESIZE if possible
             # would be ideal but haven't found a viable option to do so yet
             # and it may be exclusive to one X11 client at a time (intended for WM)
-            el, er, et, eb = extents if extents != None else (0, 0, 0, 0)
+            el, er, et, eb = extents
 
             # ewmh method is much more reliable than window.configure
             self.ewmh.setMoveResizeWindow(
@@ -72,5 +73,4 @@ def snap_window(self, window, x, y):
             self.ewmh.display.flush()
 
     except BadDrawable:
-        logging.debug(f"  snap_window failed with X.BadDrawable")
-
+        logging.debug("  snap_window failed with X.BadDrawable")

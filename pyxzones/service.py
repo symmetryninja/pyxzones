@@ -1,49 +1,48 @@
+import logging
+from dataclasses import dataclass
+from gi.repository import GLib
 from Xlib import X, XK
-from Xlib.ext import record
 from Xlib.display import Display
+from Xlib.ext import record
 from Xlib.protocol import rq
 from Xlib.xobject.drawable import Window
-from dataclasses import dataclass
 
-import logging
-
-from ewmh import EWMH
-
-from .snap import snap_window
-from .zone_profile import ZoneProfile
 from .settings import SETTINGS
-from . import xq
-
-import sys
+from .snap import snap_window
+from .xewmh import XEWMH
 from .zone_display import setup_zone_display
-from gi.repository import GLib
+from .zone_profile import ZoneProfile
+
+
+class FatalXQueryFailure(Exception):
+    pass
+
 
 class Service:
     def __init__(self) -> None:
-        self.active_keys = {
-            XK.string_to_keysym(key): False for key in SETTINGS.keybindings
-        }
+        self.ewmh = XEWMH()
 
-        self.ewmh = EWMH()
-
-        monitors = xq.get_monitors(self.ewmh.display, self.ewmh.root)
+        # In modern X11, a "monitor" (crtc) is not generally a separate unit in the
+        # X11 Screen that is being used, so multiple monitors simply take up rectangular
+        # spaces within the larger Screen canvas
+        #
+        # That said, while X11 doesn't care, the zoning of work areas does, so this
+        # information will be passed along later to appropriately slice out zones of the
+        # big Screen rectangle
+        monitors = self.ewmh.getMonitors()
         logging.debug(f"{monitors=}")
 
-        number_of_virtual_desktops = self.ewmh.getNumberOfDesktops()
-        work_areas = xq.get_work_areas_for_all_desktops(self.ewmh.display, number_of_virtual_desktops)
+        work_areas = self.ewmh.getWorkAreasForAllVirtualDesktops()
         logging.debug(f"for all desktops:\n{work_areas=}")
 
         if not work_areas:
-            # TODO: Don't fail out here, raise exception for main() to handle
-            logging.critical("Could not find work areas for rendering, potentially unsupported by window manager.")
-            sys.exit(1)
+            raise FatalXQueryFailure("Could not find work areas for rendering, potentially unsupported by window manager.")
 
+        # TODO: Double check this logic and document the meaning, confused myself
         if len(monitors) != len(work_areas[0]):
             logging.info("Operating on single virtual display work area")
 
-
         self.zone_profile = ZoneProfile.get_zones_per_virtual_desktop(monitors, work_areas)
-
 
         # TODO: change for screen / resolution changes & recalculate zones
         # todo: there should be some refresh point or cadence for monitor,
@@ -62,15 +61,16 @@ class Service:
             self.zone_profile.zones[current_virtual_desktop]
         )
 
-        self.active_keys_down = False
-        self.mouse_button_down = False
         self.active_window = None
+        self.mouse_button_down = False
         self.last_active_window_position = None
         self.active_window_has_moved = False
         self.zones_shown = False
+        self.active_keys = { XK.string_to_keysym(key): False for key in SETTINGS.keybindings }
+        self.active_keys_down = False # effectively a cache of all(self.active_keys.values())
 
 
-    @dataclass
+    @dataclass(frozen=True)
     class WindowState:
         window:      Window | None          = None
         coordinates: tuple[int, int] | None = None
@@ -79,22 +79,24 @@ class Service:
 
 
     def get_window_state(self, window: Window) -> WindowState:
-        state = Service.WindowState()
-        state.window = window
-        if state.window:
-            state.coordinates = xq.get_window_coordinates(state.window)
-            state.geometry = state.window.get_geometry()
-            state.extents = xq.get_window_frame_extents(self.ewmh.display, state.window)
-        return state
+        if not window:
+            return Service.WindowState()
+
+        return Service.WindowState(
+            window=window,
+            coordinates=self.ewmh.getWindowCoordinates(window),
+            geometry=window.get_geometry(),
+            extents=self.ewmh.getWindowFrameExtents(window)
+        )
 
 
-    def get_window_basis_point(self, window_geometry, window_coordinates: tuple[int, int]):
-        # NOTE: There's likely an edge case here since geomotry doesn't include extents (and even though most extents don't
-        # seem to touch width) so the width may be more than what is referred to here, likely not by much though
-        return (window_coordinates[0] + window_geometry.width / 2, window_coordinates[1])
+    def get_window_basis_point(self, geometry, coordinates: tuple[int, int], extents: list[int]):
+        el, er, _, _ = extents
+        return (coordinates[0] + int((el + er + geometry.width) / 2), coordinates[1])
 
 
     def on_mousebutton_down(self, event_window: Window, basis_point: tuple[int, int]):
+        # TODO: Don't need mouse_button_down since active_window acts as such a signal (and more)?
         self.mouse_button_down = True
         self.active_window = event_window.window
         self.last_active_window_position = basis_point
@@ -133,11 +135,17 @@ class Service:
     def process_event(self, event):
         # TODO: if Escape is pressed, cancel snapping
 
+        # Getting the window state is not particularly expensive, but is also
+        # not an insigificant operation. A later optimization, if necessary,
+        # may be to change properties to be lazily instantiated and cached
+        # as this state is meant to only last for this single process_event()
+        # and not all fields may be needed
         event_window = self.get_window_state(
             self.active_window if self.active_window else self.ewmh.getActiveWindow()
         )
+
         if SETTINGS.snap_basis_point == 'window' and self.active_window:
-            basis_point = self.get_window_basis_point(event_window.geometry, event_window.coordinates)
+            basis_point = self.get_window_basis_point(event_window.geometry, event_window.coordinates, event_window.extents)
         else:
             basis_point = (event.root_x, event.root_y)
 
@@ -200,4 +208,3 @@ class Service:
         )
         self.record_display.record_enable_context(self.context, self.event_handler)
         self.record_display.record_free_context(self.context)
-

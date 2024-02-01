@@ -1,10 +1,12 @@
-import threading
-import cairo
 import gi
+import threading
+
 gi.require_version("Gtk", "3.0")
 from gi.repository import Gtk
+
 from .settings import SETTINGS
 from .types import MergeZone, Zone
+
 
 class ZoneDisplayWindow(Gtk.Window):
     def __init__(self, screen_width, screen_height, zones):
@@ -78,7 +80,7 @@ class ZoneDisplayWindow(Gtk.Window):
             hover_zones = self.hover_zone.zones if type(self.hover_zone) is MergeZone else (self.hover_zone,)
 
         for zone in self.zones:
-            hover_zone = SETTINGS.highlight_hover_zone and zone in (hover_zones)
+            hover_zone = SETTINGS.highlight_hover_zone and zone in hover_zones
             self.draw_zone(cr, zone, *(self.normal_zone_config if not hover_zone else self.hover_zone_config))
 
 
@@ -90,4 +92,3 @@ def setup_zone_display(x_screen_width, x_screen_height, zones):
     thread.start()
 
     return zone_window
-

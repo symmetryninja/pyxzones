@@ -1,0 +1,32 @@
+{
+    "zones": {
+        "displays": [
+            {
+                "orientation": "landscape",
+                "columns": [ 10, 80, 10 ]
+            },
+            {
+                "orientation": "portrait",
+                "rows": [ 35, 40, 25 ]
+            }
+        ]
+    },
+
+    "keybindings": ["Alt_L"],
+    "maximize_perpendicular_axis_on_snap": false,
+    "wait_for_window_movement": true,
+    "snap_basis_point": "cursor",
+
+    "zone_border_inset": 0,
+    "zone_border_color": [0.0, 0.47, 0.84, 1.0],
+    "zone_border_thickness": 4,
+    "zone_background_color": [0.96, 0.96, 1.0, 0.5],
+    "zone_background_inset": 2,
+    "highlight_hover_zone": true,
+    "hover_zone_border_inset": 0,
+    "hover_zone_border_color": [0.0, 0.47, 0.84, 1.0],
+    "hover_zone_border_thickness": 4,
+    "hover_zone_background_color": [0.0, 0.47, 0.84, 0.5],
+    "hover_zone_background_inset": 2,
+    "merge_zone_size_preference": 7
+}

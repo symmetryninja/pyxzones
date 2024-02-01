@@ -1,15 +1,30 @@
-# TODO: JSON-backed configuration with defaults below
+import json
+from pathlib import Path
+
 class Settings:
+
+    def __init__(self):
+        self.user_configuration = None
+
+    # This lookup mechanism is not particularly slow, but frequently accessed
+    # fields could be cached by the accessor if concerned
+    def __getattribute__(self, name):
+        if name != 'user_configuration' and self.user_configuration and name in self.user_configuration:
+            return self.user_configuration[name]
+        return super().__getattribute__(name)
+
+    def load_from_file(self, file: Path):
+        self.user_configuration = json.load(file)
 
     @property
     def zones(self):
         return {
-            "displays": [ # list of displays
-                { # display 1, horizontal (from left to right in virtual display)
+            "displays": [  # list of displays
+                {  # display 1, horizontal (from left to right in virtual display)
                     "orientation": "landscape",
                     "columns": [ 10, 80, 10 ]
                 },
-                { # display 2, vertical
+                {  # display 2, vertical
                     "orientation": "portrait",
                     "rows": [ 35, 40, 25 ]
                 },
@@ -105,5 +120,24 @@ class Settings:
     def merge_zone_size_preference(self) -> float:
         return 7
 
-SETTINGS = Settings()
 
+"""
+
+From a quick glance, the default FanzyZones colors seem to be something along the lines of:
+
+zone_border_inset: 0
+zone_border_color: (0.0, 0.47, 0.84, 1.0)
+zone_border_thickness: 4
+zone_background_color: (0.96, 0.96, 1.0, 0.5)
+zone_background_inset: {zone_border_thickness / 2}
+highlight_hover_zone: True
+hover_zone_border_inset: {zone_border_inset}
+hover_zone_border_color: {zone_border_color}
+hover_zone_border_thickness: {zone_border_thickness}
+hover_zone_background_color: (0.0, 0.47, 0.84, 0.5)
+hover_zone_background_inset: {zone_border_thickness / 2}
+
+"""
+
+
+SETTINGS = Settings()
