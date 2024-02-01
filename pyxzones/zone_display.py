@@ -4,6 +4,7 @@ import gi
 gi.require_version("Gtk", "3.0")
 from gi.repository import Gtk
 from .settings import SETTINGS
+from .types import MergeZone, Zone
 
 class ZoneDisplayWindow(Gtk.Window):
     def __init__(self, screen_width, screen_height, zones):
@@ -27,7 +28,7 @@ class ZoneDisplayWindow(Gtk.Window):
         self.connect("draw", self.area_draw)
 
         self.zones = zones
-        self.hover_zone = None
+        self.hover_zone: Zone | MergeZone = None
 
         # NOTE: Order matters here, expanded as function parameters below
         self.normal_zone_config = (
@@ -50,7 +51,7 @@ class ZoneDisplayWindow(Gtk.Window):
         self.hover_zone = zone
 
 
-    def draw_zone(self, cr, zone, background_color, background_inset, border_color, border_thickness, border_inset):
+    def draw_zone(self, cr, zone: Zone, background_color, background_inset, border_color, border_thickness, border_inset):
         cr.set_source_rgba(*background_color)
         cr.rectangle(
             zone.x + background_inset,
@@ -72,14 +73,12 @@ class ZoneDisplayWindow(Gtk.Window):
 
 
     def area_draw(self, widget, cr):
-        # TODO: Why these four lines are here again, remove?
-        cr.set_source_rgba(0.2, 0.2, 0.2, 0.2)
-        cr.set_operator(cairo.OPERATOR_SOURCE)
-        cr.paint()
-        cr.set_operator(cairo.OPERATOR_OVER)
+        hover_zones = ()
+        if self.hover_zone:
+            hover_zones = self.hover_zone.zones if type(self.hover_zone) is MergeZone else (self.hover_zone,)
 
         for zone in self.zones:
-            hover_zone = SETTINGS.highlight_hover_zone and zone == self.hover_zone
+            hover_zone = SETTINGS.highlight_hover_zone and zone in (hover_zones)
             self.draw_zone(cr, zone, *(self.normal_zone_config if not hover_zone else self.hover_zone_config))
 
 

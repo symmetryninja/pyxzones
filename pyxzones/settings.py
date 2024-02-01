@@ -42,7 +42,7 @@ class Settings:
         #
         # 'cursor': will use the mouse cursor as the determining point for zone selection
         # 'window': will use the center of the top of the window as the determining point
-        return 'window'
+        return 'cursor'
 
     # Inset (margin) in pixels
     @property
@@ -98,6 +98,12 @@ class Settings:
     def hover_zone_background_inset(self) -> int:
         return 0
 
+    # Percentage of usable work area (generally, screen) to use for identifying
+    # merge boundaries across zone borders (for example, 7% is 3.5% on each side
+    # of a zone border)
+    @property
+    def merge_zone_size_preference(self) -> float:
+        return 7
 
 SETTINGS = Settings()
 

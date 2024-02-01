@@ -2,12 +2,16 @@ from Xlib.error import BadDrawable
 import logging
 from . import xq
 from .settings import SETTINGS
+from .types import MergeZone
 
 def snap_window(self, window, x, y):
     logging.debug(f"  snap_window({x=}, {y=})")
     try:
-        # TODO: implement zone-merge around borders
         zone = self.zone_profile.find_zone(self.ewmh.getShowingDesktop(), x, y)
+
+        if type(zone) is MergeZone:
+            zone = zone.surface
+
         logging.debug(f"\tlanding zone: {zone}")
 
         if window and zone:
