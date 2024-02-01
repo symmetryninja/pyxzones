@@ -32,6 +32,13 @@ def get_config_file_path(filename: str) -> Path | None:
         logging.debug(f"Found configuration file at {file}")
         return file
 
+    # Looking at the home directory, lastly check for a hidden config
+    if filename[0] != '.':
+        file = Path(Path.home(), f".{filename}")
+        if file.exists():
+            logging.debug(f"Found configuration file at {file}")
+            return file
+
     return None
 
 
