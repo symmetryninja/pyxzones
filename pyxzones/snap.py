@@ -8,7 +8,7 @@ from .types import MergeZone
 def snap_window(self, window, x, y):
     logging.debug(f"  snap_window({x=}, {y=})")
     try:
-        zone = self.zone_profile.find_zone(self.ewmh.getShowingDesktop(), x, y)
+        zone = self.zone_profile.find_zone(self.current_virtual_desktop, x, y)
 
         if type(zone) is MergeZone:
             zone = zone.surface
@@ -17,7 +17,7 @@ def snap_window(self, window, x, y):
 
         if window and zone:
             extents = self.ewmh.getWindowFrameExtents(window)
-            # chrome, system monitor, software manager, etc. don't have extents
+            # Chrome, System Monitor, Software Manager, etc. don't have extents
             # seemingly because they manage/render their own title bars
             # (tabs, search field, etc.)
             #

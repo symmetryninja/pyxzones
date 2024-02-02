@@ -1,4 +1,5 @@
 import logging
+import threading
 from dataclasses import dataclass
 from gi.repository import GLib
 from Xlib import X, XK
@@ -18,47 +19,45 @@ class FatalXQueryFailure(Exception):
     pass
 
 
+def get_zone_profile(ewmh):
+    # In modern X11, a "monitor" (crtc) is not generally a separate unit in the
+    # X11 Screen that is being used, so multiple monitors simply take up rectangular
+    # spaces within the larger Screen canvas
+    #
+    # That said, while X11 doesn't care, the zoning of work areas does, so this
+    # information will be passed along later to appropriately slice out zones of the
+    # big Screen rectangle
+    monitors = ewmh.getMonitors()
+    logging.debug(f"{monitors=}")
+
+    work_areas = ewmh.getWorkAreasForAllVirtualDesktops()
+    logging.debug(f"for all desktops:\n{work_areas=}")
+
+    if not work_areas:
+        raise FatalXQueryFailure("Could not find work areas for rendering, potentially unsupported by window manager.")
+
+    # TODO: Double check this logic and document the meaning, confused myself
+    if len(monitors) != len(work_areas[0]):
+        logging.info("Operating on single virtual display work area")
+
+    return ZoneProfile.get_zones_per_virtual_desktop(monitors, work_areas)
+
+
 class Service:
     def __init__(self) -> None:
         self.ewmh = XEWMH()
+        self.zone_profile = get_zone_profile(self.ewmh)
 
-        # In modern X11, a "monitor" (crtc) is not generally a separate unit in the
-        # X11 Screen that is being used, so multiple monitors simply take up rectangular
-        # spaces within the larger Screen canvas
-        #
-        # That said, while X11 doesn't care, the zoning of work areas does, so this
-        # information will be passed along later to appropriately slice out zones of the
-        # big Screen rectangle
-        monitors = self.ewmh.getMonitors()
-        logging.debug(f"{monitors=}")
-
-        work_areas = self.ewmh.getWorkAreasForAllVirtualDesktops()
-        logging.debug(f"for all desktops:\n{work_areas=}")
-
-        if not work_areas:
-            raise FatalXQueryFailure("Could not find work areas for rendering, potentially unsupported by window manager.")
-
-        # TODO: Double check this logic and document the meaning, confused myself
-        if len(monitors) != len(work_areas[0]):
-            logging.info("Operating on single virtual display work area")
-
-        self.zone_profile = ZoneProfile.get_zones_per_virtual_desktop(monitors, work_areas)
-
-        # TODO: change for screen / resolution changes & recalculate zones
-        # todo: there should be some refresh point or cadence for monitor,
-        # virtual desktops, scaling, and calculated zone information
-
-        # TODO: not sure what to do yet for desktop switching etc, kill and remake?
-        current_virtual_desktop = self.ewmh.getShowingDesktop()
+        self.current_virtual_desktop = self.ewmh.getShowingDesktop()
 
         logging.debug(f"  setup_zone_display():")
-        logging.debug(f"\t{current_virtual_desktop=}")
-        logging.debug(f"\t{self.zone_profile.zones[current_virtual_desktop]=}")
+        logging.debug(f"\t{self.current_virtual_desktop=}")
+        logging.debug(f"\t{self.zone_profile.zones[self.current_virtual_desktop]=}")
 
         geometry = self.ewmh.root.get_geometry()
         self.zone_window = setup_zone_display(
             geometry.width, geometry.height,
-            self.zone_profile.zones[current_virtual_desktop]
+            self.zone_profile.zones[self.current_virtual_desktop]
         )
 
         self.active_window = None
@@ -68,6 +67,87 @@ class Service:
         self.zones_shown = False
         self.active_keys = { XK.string_to_keysym(key): False for key in SETTINGS.keybindings }
         self.active_keys_down = False # effectively a cache of all(self.active_keys.values())
+
+        self.setup_property_change_monitor()
+
+
+    def setup_property_change_monitor(self):
+        thread = threading.Thread(target=self.property_change_event_handler)
+        thread.daemon=True
+        thread.start()
+
+    def property_change_event_handler(self):
+        local = threading.local()
+        local.ewmh = XEWMH()
+
+        """
+        This below enables monitoring of xrandr events around display status
+        (added, disconnected, on/off, etc.). It's quite useful, but the updates
+        provided by X.PropertyNotify seem sufficient for now.
+
+        Leaving in as a reference.
+
+        from Xlib.ext import randr
+        randr.select_input(local.ewmh.root,
+            randr.RRScreenChangeNotifyMask | randr.RRCrtcChangeNotifyMask |
+            randr.RROutputChangeNotifyMask | randr.RROutputPropertyNotifyMask
+        )
+        """
+        local.ewmh.root.change_attributes(event_mask=X.PropertyChangeMask)
+
+        update_desktop_timer = None
+        zone_refresh_timer = None
+
+        logging.debug("Beginning X.PropertyChanged event monitor")
+
+        # These operations should be thread-safe atomic assigments, and no other
+        # threads will likely be writing at this same moment
+        #
+        # Given that, hopefully it's unlikely there will be any race conditions
+        # arising from this that will require the addition of locking
+        def virtual_desktop_updater_task():
+            self.current_virtual_desktop = XEWMH().getShowingDesktop()
+            self.zone_window.set_zones(self.zone_profile.zones[self.current_virtual_desktop])
+            GLib.idle_add(self.zone_window.reset_position)
+
+        def zone_refresh_task():
+            self.zone_profile = get_zone_profile(XEWMH())
+            self.zone_window.set_zones(self.zone_profile.zones[self.current_virtual_desktop])
+            GLib.idle_add(self.zone_window.reset_position)
+
+
+        while True:
+            event = local.ewmh.display.next_event()
+
+            if event.type != X.PropertyNotify:
+                continue
+
+            """
+            Events of interest:
+
+                _NET_CURRENT_DESKTOP triggered for virtual desktop change
+
+                _GTK_WORKAREAS_D# for each virtual desktop are all triggered when changed
+                    this includes adding/removing panels, adding or removing displays
+                
+                _NET_WORKAREA triggered after _GTK_WORKAREAS_D#
+
+            """
+            event_name = local.ewmh.display.get_atom_name(event.atom)
+
+            if event_name == '_NET_CURRENT_DESKTOP':
+                if update_desktop_timer and update_desktop_timer.is_alive():
+                    update_desktop_timer.cancel()
+                logging.debug(f"Virtual desktop changed, scheduling task to update state")
+                update_desktop_timer = threading.Timer(0.2, virtual_desktop_updater_task)
+                update_desktop_timer.start()
+
+            if event_name.startswith('_GTK_WORKAREAS_D') or event_name.startswith('_NET_WORKAREAS_D') or event_name == '_NET_WORKAREA':
+                if zone_refresh_timer and zone_refresh_timer.is_alive():
+                    zone_refresh_timer.cancel()
+                logging.debug(f"Work areas changed, scheduling task to update known work areas and zones")
+                zone_refresh_timer = threading.Timer(0.2, zone_refresh_task)
+                zone_refresh_timer.start()
 
 
     @dataclass(frozen=True)
@@ -108,7 +188,7 @@ class Service:
             self.active_window_has_moved = True
 
             if SETTINGS.highlight_hover_zone:
-                hover_zone = self.zone_profile.find_zone(self.ewmh.getShowingDesktop(), *basis_point)
+                hover_zone = self.zone_profile.find_zone(self.current_virtual_desktop, *basis_point)
                 self.zone_window.set_hover_zone(hover_zone)
                 GLib.idle_add(self.zone_window.queue_draw)
 
@@ -134,6 +214,9 @@ class Service:
 
     def process_event(self, event):
         # TODO: if Escape is pressed, cancel snapping
+
+        if event.type not in (X.ButtonPress, X.ButtonRelease, X.KeyPress, X.KeyRelease, X.MotionNotify):
+            print(f"{event.type=}")
 
         # Getting the window state is not particularly expensive, but is also
         # not an insigificant operation. A later optimization, if necessary,

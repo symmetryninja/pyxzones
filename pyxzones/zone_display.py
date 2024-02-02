@@ -48,16 +48,35 @@ class ZoneDisplayWindow(Gtk.Window):
             SETTINGS.hover_zone_border_inset
         )
 
-
     def set_hover_zone(self, zone):
         self.hover_zone = zone
 
+    def set_zones(self, zones):
+        self.zones = zones
+
+    def reset_position(self):
+        self.move(0, 0)
 
     def draw_zone(self, cr, zone: Zone, background_color, background_inset, border_color, border_thickness, border_inset):
+        # The WM can decide to respect or not the position request of 0, 0 and
+        # may adjust the position of the window based on panels present (some,
+        # none, or all panels...)
+        #
+        # While repeated calls to move(0, 0) may result in the display moving
+        # to the appropriate point, it may not be immediate and the user
+        # may see the window moving (can see this on current development env)
+        #
+        # So for now, consider new coordinates a forced workarea adjustment
+        # needed here
+        #
+        # The zones should already be adjusted for the appropriate workarea,
+        # just tweak relative positioning used here
+        window_coordinates = self.get_position()
+
         cr.set_source_rgba(*background_color)
         cr.rectangle(
-            zone.x + background_inset,
-            zone.y + background_inset,
+            zone.x + background_inset - window_coordinates.root_x,
+            zone.y + background_inset - window_coordinates.root_y,
             zone.width - background_inset * 2,
             zone.height - background_inset * 2
         )
@@ -66,8 +85,8 @@ class ZoneDisplayWindow(Gtk.Window):
         cr.set_source_rgba(*border_color)
         cr.set_line_width(border_thickness)
         cr.rectangle(
-            zone.x + border_inset,
-            zone.y + border_inset,
+            zone.x + border_inset - window_coordinates.root_x,
+            zone.y + border_inset - window_coordinates.root_y,
             zone.width - border_inset * 2,
             zone.height - border_inset * 2
         )

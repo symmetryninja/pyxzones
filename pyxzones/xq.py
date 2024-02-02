@@ -1,5 +1,5 @@
 import logging
-from Xlib import Xatom
+from Xlib import Xatom, threaded # type: ignore
 from Xlib.ext import randr
 
 from .types import WorkArea
@@ -83,7 +83,7 @@ def get_work_areas(display, desktop):
     # work_area_property.value is a list of desktops of repeating x,y,w,h specs
     # this includes virtual desktops, tbd on what this means for multi-monitor
     
-    # todo: this returns a large virtual-desktop without slicing monitors or unusable space
+    # TODO: this returns a large virtual-desktop without slicing monitors or unusable space
     # the caller needs to know that a result of length 1 on multi-monitor setup is a large virtual screen
     if work_area_property != None:
         logging.debug(f"{work_area_property=}")

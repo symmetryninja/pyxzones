@@ -32,15 +32,15 @@ class ZoneProfile:
         #monitor_orientation = 'landscape' if monitor['rotation'] in (1, 4) else 'portrait'
 
 
-        # todo: `monitor_orientation` and provided `orientation` below may mismatch
+        # TODO: `monitor_orientation` and provided `orientation` below may mismatch
         # error?
 
-        # todo: consider splitting out offsets from zones calculation
+        # TODO: consider splitting out offsets from zones calculation
         # gtk windows don't need offset to position within, but do need them to position windows
         x_offset = work_area.x
         y_offset = work_area.y
 
-        # todo: orientation is pigeonholed in here when it probably shouldn't be part of the Zone definition
+        # TODO: orientation is pigeonholed in here when it probably shouldn't be part of the Zone definition
 
         if zone_spec['orientation'] == 'landscape':
             total = sum(zone_spec['columns'])
@@ -72,7 +72,7 @@ class ZoneProfile:
                             ))
                 y_consumed += height
         else:
-            # todo: invalid or missing orientation error
+            # TODO: invalid or missing orientation error
             pass
 
         return zones
