@@ -1,0 +1,29 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools]
+packages = ["pyxzones"]
+
+[project]
+name = "pyxzones"
+version = "0.0.1"
+authors = [
+    { name="Josh Gentry", email="jg@noclip.dev" },
+]
+description = "A Linux window management tool inspired by Microsoft's FancyZones"
+readme = "README.md"
+requires-python = ">=3.10"
+classifiers = [
+    "Operating System :: POSIX :: Linux",
+    "Programming Language :: Python :: 3",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+]
+keywords = ["pyx", "zones", "fancyzones"]
+
+[project.urls]
+Homepage = "https://github.com/joshgentry/pyxzones"
+Issues = "https://github.com/joshgentry/pyxzones/issues"
+
+[project.scripts]
+pyxzones = "pyxzones.__main__:main"

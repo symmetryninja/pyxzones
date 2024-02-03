@@ -7,16 +7,16 @@ This project is an attempt to emulate some of the functionality Windows users ar
 
 ## How to use
 
-PyXZones is in development mode currently and can be started by calling the module `python -m pyxzones` from within the root folder of the project.
+Installed locally via `pip` (ie. `pip install pyxzones`) or executed as a python module from a clone of the git repository (`python -m pyxzones`) are effectively equivalent.
 
-Zones are currently configured manually in the `settings.py` file. They can set as vertical or horizontal slices of a monitor. The existing example should be suitable as guidance for usage.
+The default zone configuration and various other settings are provided the `settings.py` file and can be overwritten from a `pyxzones.json` configuration file located at the [XDG_CONFIG*](https://wiki.archlinux.org/title/XDG_Base_Directory) locations, or the user's home folder (a `.pyxzones.json` file is also suitable in the home folder).
 
-With zones configured, and pyxzones running, the activation key(s) also set in `settings.py` (default `Alt_L`) can be held while moving a window with the cursor to activate snapping. Holding this keybinding, windows can be dragged to a zone, and upon releasing the mouse click, the window will snap to the dimensions of the predefined zone.
+Zones can be set as vertical or horizontal slices of a monitor. The existing example is hopefully suitable as guidance for general usage (please see `example_config/pyxzones.json`).
+
+With zones configured, and pyxzones running, the activation key(s) also set in settings (efault `Alt_L`) can be held while moving a window with the cursor to activate snapping. Holding this keybinding, windows can be dragged to a zone, and upon releasing the mouse click, the window will snap to the dimensions of the predefined zone.
 
 
-This project is currently under active development, please check back for more updates and features soon.
-
-`Note:` This package requires access with the Xorg server bindings, so it should only be used on Xorg-based Unix Systems or systems with sufficient Xorg backwards compatibility.
+`Note:` This package requires access with the Xorg server bindings, so it should only be used on Xorg-based Unix Systems or systems with sufficient Xorg backwards compatibility. Please see more information in the below [System Requirements](#system-requirements) section.
 
 
 ## Seeing stubborn windows?
@@ -38,3 +38,23 @@ window > decoration {
 }
 ```
 Note that you may need to create the file mentioned above and this will likely require an X server restart (not just log out/log in) to apply.
+
+## System Requirements
+
+#### Building
+
+To build the app, a system must have the required GTK libraries used in the current zone display window. On the development system used, these included `libcairo2-dev libgirepository1.0-dev gir1.2-gtk-4.0`. A reference for multiple systems is located at the PyGObject documentation [located here](https://pygobject.readthedocs.io/en/latest/getting_started.html).
+
+#### Window Manager
+
+In addition, the X Window Manager being used must support the `Xrandr` and `Record` extentions and the following X features are _required_ for basic expected functionality:
+* _NET_WORKAREAS
+* _NET_MOVERESIZE_WINDOW
+* _NET_SHOWING_DESKTOP
+* _NET_ACTIVE_WINDOW
+
+The features below may not be strictly required, but will degrate the quality of the experience that can be expected:
+* _NET_FRAME_EXTENTS
+* _GTK_WORKAREAS_*
+* _NET_WM_STATE
+* _NET_CURRENT_DESKTOP
