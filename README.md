@@ -48,13 +48,13 @@ To build the app, a system must have the required GTK libraries used in the curr
 #### Window Manager
 
 In addition, the X Window Manager being used must support the `Xrandr` and `Record` extentions and the following X features are _required_ for basic expected functionality:
-* _NET_WORKAREAS
+* _NET_WORKAREA
 * _NET_MOVERESIZE_WINDOW
 * _NET_SHOWING_DESKTOP
 * _NET_ACTIVE_WINDOW
 
 The features below may not be strictly required, but will degrate the quality of the experience that can be expected:
 * _NET_FRAME_EXTENTS
-* _GTK_WORKAREAS_*
+* _GTK_WORKAREAS
 * _NET_WM_STATE
 * _NET_CURRENT_DESKTOP

@@ -46,8 +46,14 @@ def get_zone_profile(ewmh):
 class Service:
     def __init__(self) -> None:
         self.ewmh = XEWMH()
-        self.zone_profile = get_zone_profile(self.ewmh)
 
+        if not self.ewmh.display.has_extension("RANDR"):
+            raise FatalXQueryFailure("X server does not have the required RANDR extension")
+
+        if not self.ewmh.display.has_extension("RECORD"):
+            raise FatalXQueryFailure("X server does not have the required RECORD extension")
+
+        self.zone_profile = get_zone_profile(self.ewmh)
         self.current_virtual_desktop = self.ewmh.getShowingDesktop()
 
         logging.debug(f"  setup_zone_display():")
@@ -214,9 +220,6 @@ class Service:
 
     def process_event(self, event):
         # TODO: if Escape is pressed, cancel snapping
-
-        if event.type not in (X.ButtonPress, X.ButtonRelease, X.KeyPress, X.KeyRelease, X.MotionNotify):
-            print(f"{event.type=}")
 
         # Getting the window state is not particularly expensive, but is also
         # not an insigificant operation. A later optimization, if necessary,
