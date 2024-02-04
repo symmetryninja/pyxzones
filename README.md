@@ -1,5 +1,6 @@
 # PyXZones
 
+
 ## A slice of [FancyZones](https://learn.microsoft.com/en-us/windows/powertoys/fancyzones) on Linux
 
 This project is an attempt to emulate some of the functionality Windows users are able to leverage from FancyZones. Users can drag and drop windows into predefined zones, and have PyXZones fit the window to the zone space.
@@ -7,23 +8,32 @@ This project is an attempt to emulate some of the functionality Windows users ar
 
 ## How to use
 
-Installed locally via `pip` (ie. `pip install pyxzones`) or executed as a python module from a clone of the git repository (`python -m pyxzones`) are effectively equivalent.
+#### Running
 
-The default zone configuration and various other settings are provided the `settings.py` file and can be overwritten from a `pyxzones.json` configuration file located at the [XDG_CONFIG*](https://wiki.archlinux.org/title/XDG_Base_Directory) locations, or the user's home folder (a `.pyxzones.json` file is also suitable in the home folder).
+Installed locally via `pip` (ie. `pip install pyxzones`) and run via `pyxzones` or executed as a python module from a clone of the git repository (`python -m pyxzones`) are effectively equivalent. Please see `--help` for command line options.
 
-Zones can be set as vertical or horizontal slices of a monitor. The existing example is hopefully suitable as guidance for general usage (please see `example_config/pyxzones.json`).
+For additional runtime details, there is an unlisted option, `--log-level` which can be set to print more or less information about the running process. Values of `INFO` and `DEBUG` are the most informative, with `DEBUG` being the most output.
 
-With zones configured, and pyxzones running, the activation key(s) also set in settings (efault `Alt_L`) can be held while moving a window with the cursor to activate snapping. Holding this keybinding, windows can be dragged to a zone, and upon releasing the mouse click, the window will snap to the dimensions of the predefined zone.
+#### Configuration
+
+The default zone configuration and various other settings are provided the `settings.py` file and can be overwritten from a `pyxzones.json` configuration file located at the [XDG_CONFIG*](https://wiki.archlinux.org/title/XDG_Base_Directory) locations, or the user's home folder (a dot-prefixed `.pyxzones.json` file is also discoverable in the home folder).
+
+Zones can be set as vertical or horizontal slices of a monitor. The existing example is hopefully suitable as guidance for general usage (please see `example_config/pyxzones.json`), it also includes a rough approximation of FancyZones display settings.
+
+#### Usage
+
+With zones configured, and pyxzones running, the activation key(s) also set in settings (default `Alt_L`) can be held while moving a window with the cursor to activate snapping. Holding this keybinding, windows can be dragged to a zone, and upon releasing the mouse click, the window will snap to the dimensions of the predefined zone.
 
 
 `Note:` This package requires access with the Xorg server bindings, so it should only be used on Xorg-based Unix Systems or systems with sufficient Xorg backwards compatibility. Please see more information in the below [System Requirements](#system-requirements) section.
 
 
-## Seeing stubborn windows?
+## Troubleshooting: Seeing stubborn windows?
 
 You may run across some windows that behave strangely. Specifically calling out here GTK3.0 windows, which have a default margin around them and will not cooperate with resizing to fill a zone completely.
 
 To get around this GTK quirk, you may adjust your user CSS rules (located at `~/.config/gtk-3.0/gtk.css`) for GTK as follows:
+
 ```css
 /* early GTK 3 rules */
 .window-frame {
@@ -37,7 +47,9 @@ window > decoration {
   box-shadow: none;
 }
 ```
+
 Note that you may need to create the file mentioned above and this will likely require an X server restart (not just log out/log in) to apply.
+
 
 ## System Requirements
 
@@ -55,6 +67,6 @@ In addition, the X Window Manager being used must support the `Xrandr` and `Reco
 
 The features below may not be strictly required, but will degrate the quality of the experience that can be expected:
 * _NET_FRAME_EXTENTS
-* _GTK_WORKAREAS
+* _GTK_WORKAREAS_D\*
 * _NET_WM_STATE
 * _NET_CURRENT_DESKTOP
