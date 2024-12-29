@@ -36,6 +36,12 @@ class Settings:
         # Shift_L has some annoying window grid snapping functionality in Mutter/Cinnamon
         # (so does Alt for window moving, but that can be disabled if desired)
         return ['Alt_L'] #["Shift_L"]
+    
+    @property
+    def keybinding_quick_shift(self):
+        # Shift_L has some annoying window grid snapping functionality in Mutter/Cinnamon
+        # (so does Alt for window moving, but that can be disabled if desired)
+        return ['Alt_L', 'Shift_L']
 
     @property
     def maximize_perpendicular_axis_on_snap(self):

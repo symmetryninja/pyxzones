@@ -73,6 +73,8 @@ class Service:
         self.zones_shown = False
         self.active_keys = { XK.string_to_keysym(key): False for key in SETTINGS.keybindings }
         self.active_keys_down = False # effectively a cache of all(self.active_keys.values())
+        self.active_keys_quick_shift = { XK.string_to_keysym(key): False for key in SETTINGS.keybinding_quick_shift }
+        
 
         self.setup_property_change_monitor()
 
@@ -213,6 +215,12 @@ class Service:
 
     def on_key_updown(self, event):
         keysym = self.ewmh.display.keycode_to_keysym(event.detail, 0)
+        # Check if quickshift
+        if keysym in self.active_keys_quick_shift:
+            self.active_keys_quick_shift[keysym] = (event.type == X.KeyPress)
+            if all(self.active_keys_quick_shift.values()):
+                print("quickshift")
+                print(self.active_keys_quick_shift)
         if keysym in self.active_keys:
             self.active_keys[keysym] = (event.type == X.KeyPress)
         self.active_keys_down = all(self.active_keys.values())
