@@ -206,7 +206,8 @@ class Service:
 
     def on_mousebutton_up(self, event_window: Window, basis_point: tuple[int, int]):
         self.mouse_button_down = False
-        if self.active_keys_down and not (SETTINGS.wait_for_window_movement and not self.active_window_has_moved):
+        # TODO: this is a somewhat dirty hack to detect if we've clicked on the desktop - should make this not magic string based.
+        if self.ewmh.getWmName(self.ewmh.getActiveWindow()) != b'Desktop' and self.active_keys_down and not (SETTINGS.wait_for_window_movement and not self.active_window_has_moved):
             snap_window(self, self.ewmh.getActiveWindow(), *basis_point)
         self.active_window = None
         self.active_window_has_moved = False

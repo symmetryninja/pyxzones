@@ -20,6 +20,8 @@ The default zone configuration and various other settings are provided the `sett
 
 Zones can be set as vertical or horizontal slices of a monitor. The existing example is hopefully suitable as guidance for general usage (please see `example_config/pyxzones.json`), it also includes a rough approximation of FancyZones display settings.
 
+Key configuration [listed here](https://anzeljg.github.io/rin2/book2/2405/docs/tkinter/key-names.html)
+
 #### Usage
 
 With zones configured, and pyxzones running, the activation key(s) also set in settings (default `Alt_L`) can be held while moving a window with the cursor to activate snapping. Holding this keybinding, windows can be dragged to a zone, and upon releasing the mouse click, the window will snap to the dimensions of the predefined zone.
