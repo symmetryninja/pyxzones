@@ -170,13 +170,16 @@ class Service:
         if not window:
             return Service.WindowState()
 
-        return Service.WindowState(
-            window=window,
-            coordinates=self.ewmh.getWindowCoordinates(window),
-            geometry=window.get_geometry(),
-            extents=self.ewmh.getWindowFrameExtents(window)
-        )
-
+        try:
+            return Service.WindowState(
+                window=window,
+                coordinates=self.ewmh.getWindowCoordinates(window),
+                geometry=window.get_geometry(),
+                extents=self.ewmh.getWindowFrameExtents(window)
+            )
+        except:
+            return Service.WindowState()
+        #TODO: - don't swallow this exception
 
     def get_window_basis_point(self, geometry, coordinates: tuple[int, int], extents: list[int]):
         el, er, _, _ = extents
@@ -204,7 +207,7 @@ class Service:
     def on_mousebutton_up(self, event_window: Window, basis_point: tuple[int, int]):
         self.mouse_button_down = False
         if self.active_keys_down and not (SETTINGS.wait_for_window_movement and not self.active_window_has_moved):
-            snap_window(self, self.active_window, *basis_point)
+            snap_window(self, self.ewmh.getActiveWindow(), *basis_point)
         self.active_window = None
         self.active_window_has_moved = False
         self.last_active_window_position = None
@@ -221,6 +224,13 @@ class Service:
             if all(self.active_keys_quick_shift.values()):
                 print("quickshift")
                 print(self.active_keys_quick_shift)
+                # TODO:
+                # here's where I would:
+                # - detect the current window's location
+                # - figure out if
+                # - we're moving a window that's not on a tile space
+                # - overflowling to another screen 
+                # - or just moving between spaces
         if keysym in self.active_keys:
             self.active_keys[keysym] = (event.type == X.KeyPress)
         self.active_keys_down = all(self.active_keys.values())

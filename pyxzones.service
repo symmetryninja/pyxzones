@@ -1,0 +1,15 @@
+[Unit]
+Description=PyXzones user service
+
+[Service]
+# Command to execute when the service is started
+
+[Unit]
+Description=PyXzones user service
+
+[Service]
+# Command to execute when the service is started
+ExecStart=python -m pyxzones
+
+[Install]
+WantedBy=default.target

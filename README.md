@@ -27,6 +27,31 @@ With zones configured, and pyxzones running, the activation key(s) also set in s
 
 `Note:` This package requires access with the Xorg server bindings, so it should only be used on Xorg-based Unix Systems or systems with sufficient Xorg backwards compatibility. Please see more information in the below [System Requirements](#system-requirements) section.
 
+#### Using as a system service
+
+To make this a service, you'll need the systemctl file put into the right place:
+
+```bash
+sudo cp pyxzones.service /usr/lib/systemd/user/pyxzones.service
+```
+
+Then you'll need to enable the service:
+
+```bash
+systemctl --user enable pyxzones.service
+```
+
+Then you'll need to start the service:
+
+```bash
+systemctl --user start pyxzones.service
+```
+
+**note:** if you change the configuration, you'll need to restart the service:
+
+```bash
+systemctl --user restart pyxzones.service
+```
 
 ## Troubleshooting: Seeing stubborn windows?
 
